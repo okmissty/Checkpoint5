@@ -4,23 +4,7 @@
 
   <lib desc="#Wiring" name="0">
     <tool name="Splitter">
-      <a name="bit1" val="0"/>
-      <a name="bit10" val="3"/>
-      <a name="bit11" val="3"/>
-      <a name="bit12" val="4"/>
-      <a name="bit13" val="4"/>
-      <a name="bit14" val="5"/>
-      <a name="bit15" val="5"/>
-      <a name="bit2" val="0"/>
-      <a name="bit3" val="1"/>
-      <a name="bit4" val="1"/>
-      <a name="bit5" val="1"/>
-      <a name="bit6" val="2"/>
-      <a name="bit7" val="2"/>
-      <a name="bit8" val="2"/>
-      <a name="bit9" val="3"/>
-      <a name="fanout" val="6"/>
-      <a name="incoming" val="16"/>
+      <a name="facing" val="west"/>
     </tool>
     <tool name="Pin">
       <a name="appearance" val="classic"/>
@@ -31,7 +15,7 @@
       <a name="radix" val="10signed"/>
     </tool>
     <tool name="Tunnel">
-      <a name="width" val="32"/>
+      <a name="width" val="2"/>
     </tool>
     <tool name="Pull Resistor">
       <a name="facing" val="north"/>
@@ -44,7 +28,11 @@
       <a name="value" val="0x0"/>
     </tool>
   </lib>
-  <lib desc="#Gates" name="1"/>
+  <lib desc="#Gates" name="1">
+    <tool name="Controlled Buffer">
+      <a name="facing" val="north"/>
+    </tool>
+  </lib>
   <lib desc="#Plexers" name="2"/>
   <lib desc="#Arithmetic" name="3"/>
   <lib desc="#Memory" name="4"/>
@@ -1104,41 +1092,65 @@
       <text dominant-baseline="central" font-family="SansSerif" font-size="12" text-anchor="middle" x="104" y="69">KeyboardStatus</text>
       <text dominant-baseline="central" font-family="SansSerif" font-size="12" text-anchor="middle" x="103" y="90">KeyboardRead</text>
       <circ-anchor facing="east" x="270" y="40"/>
-      <circ-port dir="in" pin="210,400" x="270" y="40"/>
-      <circ-port dir="in" pin="210,440" x="270" y="100"/>
-      <circ-port dir="in" pin="230,490" x="270" y="80"/>
-      <circ-port dir="in" pin="250,530" x="50" y="50"/>
-      <circ-port dir="in" pin="270,570" x="50" y="70"/>
-      <circ-port dir="out" pin="390,500" x="270" y="50"/>
-      <circ-port dir="out" pin="390,580" x="50" y="90"/>
-      <circ-port dir="out" pin="520,440" x="270" y="60"/>
+      <circ-port dir="in" pin="240,720" x="50" y="70"/>
+      <circ-port dir="in" pin="260,380" x="270" y="100"/>
+      <circ-port dir="in" pin="270,350" x="270" y="40"/>
+      <circ-port dir="in" pin="280,490" x="270" y="80"/>
+      <circ-port dir="in" pin="300,680" x="50" y="50"/>
+      <circ-port dir="out" pin="720,410" x="270" y="60"/>
+      <circ-port dir="out" pin="720,500" x="270" y="50"/>
+      <circ-port dir="out" pin="720,570" x="50" y="90"/>
     </appear>
-    <comp lib="0" loc="(210,400)" name="Pin">
+    <comp lib="0" loc="(240,720)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="label" val="KeyboardStatus"/>
+    </comp>
+    <comp lib="0" loc="(260,380)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="label" val="WriteEnableFromBus"/>
+    </comp>
+    <comp lib="0" loc="(270,350)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="label" val="DataFromBus"/>
       <a name="radix" val="16"/>
       <a name="width" val="32"/>
     </comp>
-    <comp lib="0" loc="(210,440)" name="Pin">
-      <a name="appearance" val="NewPins"/>
-      <a name="label" val="WriteEnableFromBus"/>
-    </comp>
-    <comp lib="0" loc="(230,490)" name="Pin">
+    <comp lib="0" loc="(280,490)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="label" val="AddressFromBus"/>
       <a name="radix" val="16"/>
       <a name="width" val="26"/>
     </comp>
-    <comp lib="0" loc="(250,530)" name="Pin">
+    <comp lib="0" loc="(300,680)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="label" val="KeyboardData"/>
       <a name="width" val="7"/>
     </comp>
-    <comp lib="0" loc="(270,570)" name="Pin">
-      <a name="appearance" val="NewPins"/>
-      <a name="label" val="KeyboardStatus"/>
+    <comp lib="0" loc="(380,470)" name="Constant">
+      <a name="value" val="0x3ffff10"/>
+      <a name="width" val="26"/>
     </comp>
-    <comp lib="0" loc="(390,500)" name="Pin">
+    <comp lib="0" loc="(380,550)" name="Constant">
+      <a name="value" val="0x3ffff14"/>
+      <a name="width" val="26"/>
+    </comp>
+    <comp lib="0" loc="(500,680)" name="Bit Extender">
+      <a name="in_width" val="7"/>
+      <a name="out_width" val="32"/>
+      <a name="type" val="zero"/>
+    </comp>
+    <comp lib="0" loc="(500,720)" name="Bit Extender">
+      <a name="in_width" val="1"/>
+      <a name="out_width" val="32"/>
+      <a name="type" val="zero"/>
+    </comp>
+    <comp lib="0" loc="(720,410)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="WriteToBus"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(720,500)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
       <a name="label" val="DataToBus"/>
@@ -1146,26 +1158,127 @@
       <a name="type" val="output"/>
       <a name="width" val="32"/>
     </comp>
-    <comp lib="0" loc="(390,580)" name="Pin">
+    <comp lib="0" loc="(720,570)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
       <a name="label" val="KeyboardRead"/>
       <a name="type" val="output"/>
     </comp>
-    <comp lib="0" loc="(500,440)" name="Constant">
-      <a name="value" val="0x0"/>
+    <comp lib="1" loc="(510,520)" name="NOT Gate">
+      <a name="size" val="20"/>
     </comp>
-    <comp lib="0" loc="(520,440)" name="Pin">
-      <a name="appearance" val="NewPins"/>
-      <a name="facing" val="west"/>
-      <a name="label" val="WriteToBus"/>
-      <a name="type" val="output"/>
+    <comp lib="1" loc="(510,600)" name="NOT Gate">
+      <a name="size" val="20"/>
     </comp>
-    <comp lib="8" loc="(430,430)" name="Text">
+    <comp lib="1" loc="(540,470)" name="AND Gate">
+      <a name="size" val="30"/>
+    </comp>
+    <comp lib="1" loc="(540,530)" name="AND Gate">
+      <a name="size" val="30"/>
+    </comp>
+    <comp lib="1" loc="(540,610)" name="AND Gate">
+      <a name="size" val="30"/>
+    </comp>
+    <comp lib="1" loc="(560,450)" name="NOT Gate">
+      <a name="facing" val="south"/>
+      <a name="size" val="20"/>
+    </comp>
+    <comp lib="1" loc="(570,530)" name="Controlled Buffer">
+      <a name="control" val="left"/>
+    </comp>
+    <comp lib="1" loc="(580,600)" name="Controlled Buffer">
+      <a name="control" val="left"/>
+      <a name="facing" val="north"/>
+      <a name="width" val="32"/>
+    </comp>
+    <comp lib="1" loc="(650,480)" name="Controlled Buffer">
+      <a name="facing" val="south"/>
+    </comp>
+    <comp lib="1" loc="(660,650)" name="OR Gate">
+      <a name="size" val="30"/>
+    </comp>
+    <comp lib="2" loc="(630,500)" name="Multiplexer">
+      <a name="width" val="32"/>
+    </comp>
+    <comp lib="3" loc="(440,480)" name="Comparator">
+      <a name="width" val="26"/>
+    </comp>
+    <comp lib="3" loc="(440,540)" name="Comparator">
+      <a name="width" val="26"/>
+    </comp>
+    <comp lib="8" loc="(319,640)" name="Text">
       <a name="font" val="SansSerif plain 12"/>
-      <a name="text" val="delete this constant 0"/>
+      <a name="text" val="if 0x3ffff10 &amp; WE=0 (lw) -&gt; keyb status to data bus"/>
     </comp>
-    <wire from="(500,440)" to="(520,440)"/>
+    <comp lib="8" loc="(322,578)" name="Text">
+      <a name="font" val="SansSerif plain 12"/>
+      <a name="text" val="if 0x3ffff14 &amp; WE=0 (lw) -&gt; keyb data to data bus"/>
+    </comp>
+    <comp lib="8" loc="(332,444)" name="Text">
+      <a name="font" val="SansSerif plain 12"/>
+      <a name="text" val="if 0x3ffff10 &amp; WE=1 (sw) -&gt; send keyb read"/>
+    </comp>
+    <comp lib="8" loc="(522,449)" name="Text">
+      <a name="font" val="SansSerif plain 12"/>
+      <a name="text" val="keyb read"/>
+    </comp>
+    <comp lib="8" loc="(523,588)" name="Text">
+      <a name="font" val="SansSerif plain 12"/>
+      <a name="text" val="keyb status"/>
+    </comp>
+    <comp lib="8" loc="(524,509)" name="Text">
+      <a name="font" val="SansSerif plain 12"/>
+      <a name="text" val="keyb data"/>
+    </comp>
+    <wire from="(240,720)" to="(460,720)"/>
+    <wire from="(260,380)" to="(480,380)"/>
+    <wire from="(270,350)" to="(280,350)"/>
+    <wire from="(280,490)" to="(360,490)"/>
+    <wire from="(300,680)" to="(460,680)"/>
+    <wire from="(360,490)" to="(360,530)"/>
+    <wire from="(360,490)" to="(400,490)"/>
+    <wire from="(360,530)" to="(400,530)"/>
+    <wire from="(380,470)" to="(400,470)"/>
+    <wire from="(380,550)" to="(400,550)"/>
+    <wire from="(440,480)" to="(460,480)"/>
+    <wire from="(440,540)" to="(510,540)"/>
+    <wire from="(460,480)" to="(460,620)"/>
+    <wire from="(460,480)" to="(510,480)"/>
+    <wire from="(460,620)" to="(510,620)"/>
+    <wire from="(480,380)" to="(480,460)"/>
+    <wire from="(480,380)" to="(560,380)"/>
+    <wire from="(480,460)" to="(480,520)"/>
+    <wire from="(480,460)" to="(510,460)"/>
+    <wire from="(480,520)" to="(480,600)"/>
+    <wire from="(480,520)" to="(490,520)"/>
+    <wire from="(480,600)" to="(490,600)"/>
+    <wire from="(500,680)" to="(600,680)"/>
+    <wire from="(500,720)" to="(580,720)"/>
+    <wire from="(540,470)" to="(640,470)"/>
+    <wire from="(540,530)" to="(550,530)"/>
+    <wire from="(540,610)" to="(560,610)"/>
+    <wire from="(550,530)" to="(550,640)"/>
+    <wire from="(550,640)" to="(630,640)"/>
+    <wire from="(560,380)" to="(560,430)"/>
+    <wire from="(560,380)" to="(650,380)"/>
+    <wire from="(560,450)" to="(560,520)"/>
+    <wire from="(560,610)" to="(560,660)"/>
+    <wire from="(560,610)" to="(570,610)"/>
+    <wire from="(560,660)" to="(630,660)"/>
+    <wire from="(570,530)" to="(610,530)"/>
+    <wire from="(580,490)" to="(580,600)"/>
+    <wire from="(580,490)" to="(600,490)"/>
+    <wire from="(580,620)" to="(580,720)"/>
+    <wire from="(600,510)" to="(600,680)"/>
+    <wire from="(610,520)" to="(610,530)"/>
+    <wire from="(630,500)" to="(720,500)"/>
+    <wire from="(650,380)" to="(650,460)"/>
+    <wire from="(650,480)" to="(650,570)"/>
+    <wire from="(650,570)" to="(720,570)"/>
+    <wire from="(660,650)" to="(910,650)"/>
+    <wire from="(720,410)" to="(720,460)"/>
+    <wire from="(720,460)" to="(910,460)"/>
+    <wire from="(910,460)" to="(910,650)"/>
   </circuit>
   <circuit name="RGBController">
     <a name="appearance" val="logisim_evolution"/>
