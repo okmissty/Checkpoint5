@@ -5,18 +5,18 @@ main:
     # Test basic R-type instruction
     add $t0, $zero, $zero
     
-    # Test I-type instruction  
-    addi $t1, $zero, 5
+    # Test I-type instruction - put value 0x1234 in register
+    addi $t1, $zero, 0x1234
     
-    # Test load instruction
-    lw $t2, 0($zero)
+    # Test store instruction - store to address 5 (so hex display shows it)
+    sw $t1, 5($zero)
     
-    # Test store instruction
-    sw $t1, 4($zero)
+    # Test load instruction - load back from address 5
+    lw $t2, 5($zero)
     
     # Test branch instruction
-    beq $t0, $t1, end
+    beq $t1, $t2, end
     
 end:
-    # Halt (infinite loop or syscall)
+    # Halt (infinite loop)
     j end
