@@ -16,7 +16,7 @@ loop_digits:
     ########################################################
     # Simple delay so you can see the digit change
     ########################################################
-    addi $t2,$0,30000     # adjust as needed
+    addi $t2,$0,300     # adjust as needed
 delay:
     addi $t2,$t2,-1
     bne  $t2,$0,delay
