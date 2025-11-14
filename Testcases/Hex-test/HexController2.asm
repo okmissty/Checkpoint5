@@ -2,7 +2,7 @@
 .globl main
 
 main:
-    # Initialize stack pointer
+    # Initializes stack pointer
     addi $sp,$0,-4096
 
     # $t0 will hold the current digit (0..15)
@@ -15,7 +15,7 @@ loop_digits:
     # Write to hex display: address 0x3FFFF30 == 0xFFFFFF30 == -208
     sw   $t1,-208($0)     # HexController should show hex digit t0
 
-    # Simple delay so you can see the digit change
+    # Simple delay so we can see the digit change
     addi $t2,$0,15     # adjust this bigger/smaller as needed
 delay:
     addi $t2,$t2,-1
