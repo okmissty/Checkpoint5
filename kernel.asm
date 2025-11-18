@@ -1,3 +1,4 @@
+
 # kernel.asm - CMSC 301 Project Checkpoint 5
 # This file must be assembled FIRST before any user program
 # Usage: ./assemble kernel.asm myprogram.asm static.bin inst.bin
@@ -94,7 +95,7 @@ Syscall1_Positive:
 
     # Convert to ASCII string (store digits on stack below saved regs)
     addi $t1, $zero, 10           # Divisor = 10
-    add  $t2, $sp, $zero          # $t2 = starting pointer for digits
+    add  $t2, $sp, $zero          # $t2 = starting pointer for digits (we will store words)
     
 Syscall1_ConvertLoop:
     # Divide by 10 to get last digit
@@ -105,9 +106,9 @@ Syscall1_ConvertLoop:
     # Convert digit to ASCII
     addi $t3, $t3, 48             # add '0'
     
-    # Push digit onto stack (growing downward)
-    addi $t2, $t2, -1
-    sb   $t3, 0($t2)
+    # Push digit onto stack as a 32-bit word (growing downward by 4 bytes)
+    addi $t2, $t2, -4
+    sw   $t3, 0($t2)
     
     # Continue if quotient > 0
     bne  $t0, $zero, Syscall1_ConvertLoop
@@ -118,9 +119,10 @@ Syscall1_ConvertLoop:
     ori  $t3, $t3, 0xF000
     
 Syscall1_PrintLoop:
-    lb   $t4, 0($t2)              # Load digit
+    lw   $t4, 0($t2)              # Load digit word
+    andi $t4, $t4, 255            # Extract low byte (ASCII digit)
     sw   $t4, 0($t3)              # Write to terminal
-    addi $t2, $t2, 1              # Move to next digit
+    addi $t2, $t2, 4              # Move to next digit (word-sized)
     bne  $t2, $sp, Syscall1_PrintLoop
     j    Syscall1_Restore
 
@@ -333,4 +335,5 @@ __HEAP_POINTER__:
 # ============================================================================
 # END OF KERNEL - User program starts here
 # ============================================================================
+    .text
 __SYSCALL_EndOfFile__:
