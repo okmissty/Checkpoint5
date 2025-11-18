@@ -83,7 +83,7 @@ Syscall1:
     addi $t2, $zero, 45           # ASCII '-'
     # Load TERMINAL base address 0x03FFFF00 into $t3
     lui  $t3, 0x03FF
-    ori  $t3, $t3, 0xF000
+    ori  $t3, $t3, 0xFF00
     sw   $t2, 0($t3)              # Write to terminal
     
     # Make number positive
@@ -116,7 +116,7 @@ Syscall1_ConvertLoop:
     # Now print digits from stack back up to $sp
     # Load TERMINAL base address into $t3
     lui  $t3, 0x03FF
-    ori  $t3, $t3, 0xF000
+    ori  $t3, $t3, 0xFF00
     
 Syscall1_PrintLoop:
     lw   $t4, 0($t2)              # Load digit word
@@ -130,7 +130,7 @@ Syscall1_PrintZero:
     addi $t4, $zero, 48           # '0'
     # Write '0' to TERMINAL
     lui  $t5, 0x03FF
-    ori  $t5, $t5, 0xF000
+    ori  $t5, $t5, 0xFF00
     sw   $t4, 0($t5)
 
 Syscall1_Restore:
@@ -173,13 +173,13 @@ Syscall5_ReadLoop:
 Syscall5_Wait:
     # Read keyboard status at 0x03FFFF10
     lui  $t6, 0x03FF
-    ori  $t6, $t6, 0xF010
+    ori  $t6, $t6, 0xFF10
     lw   $t5, 0($t6)               # Read KEYBOARD STATUS
     beq  $t5, $zero, Syscall5_Wait # Wait until ready
 
     # Read character from 0x03FFFF14
     lui  $t6, 0x03FF
-    ori  $t6, $t6, 0xF014
+    ori  $t6, $t6, 0xFF14
     lw   $t5, 0($t6)               # Read KEYBOARD DATA
     
     # Check for newline (ASCII 10)
@@ -283,7 +283,7 @@ Syscall11:
 
     # Write to terminal (build TERMINAL address in $t0)
     lui  $t0, 0x03FF
-    ori  $t0, $t0, 0xF000
+    ori  $t0, $t0, 0xFF00
     sw   $a0, 0($t0)               # TERMINAL (0x03FFFF00)
 
     # Restore registers
