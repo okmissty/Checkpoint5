@@ -37,16 +37,18 @@ __SYSCALL_Dispatcher__:
 # Called automatically on reset when $v0 = 0
 # Sets up stack pointer and heap pointer
 Syscall0:
-    # Set stack pointer to 0xFFFFF000 (-4096)
-    lui  $sp, 0xFFFF
+    # Set stack pointer to 0x03FFF000 (top of RAM below devices)
+    lui  $sp, 0x03FF
     ori  $sp, $sp, 0xF000
-    
+
     # Initialize heap pointer
-    # Heap starts where static memory ends
+    # Heap starts where static memory ends (small address computed by assembler)
     la   $k1, _END_OF_STATIC_MEMORY_   # end of static
-    la   $k0, __HEAP_POINTER__         # &heap pointer
+    # __HEAP_POINTER__ lives in kernel .data at 0x03FFF000 — build that address
+    lui  $k0, 0x03FF
+    ori  $k0, $k0, 0xF000
     sw   $k1, 0($k0)                   # heap_ptr = end_of_static
-    
+
     # Jump to user program
     j    __SYSCALL_EndOfFile__
 
