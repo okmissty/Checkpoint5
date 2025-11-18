@@ -75,7 +75,9 @@ Syscall1:
     
     # Print minus sign '-'
     addi $t2, $zero, 45           # ASCII '-'
-    addi $t3, $zero, -256         # TERMINAL address
+    # Load TERMINAL base address 0x03FFFF00 into $t3
+    lui  $t3, 0x03FF
+    ori  $t3, $t3, 0xF000
     sw   $t2, 0($t3)              # Write to terminal
     
     # Make number positive
@@ -106,7 +108,9 @@ Syscall1_ConvertLoop:
     bne  $t0, $zero, Syscall1_ConvertLoop
     
     # Now print digits from stack back up to $sp
-    addi $t3, $zero, -256         # TERMINAL address
+    # Load TERMINAL base address into $t3
+    lui  $t3, 0x03FF
+    ori  $t3, $t3, 0xF000
     
 Syscall1_PrintLoop:
     lb   $t4, 0($t2)              # Load digit
@@ -117,7 +121,10 @@ Syscall1_PrintLoop:
 
 Syscall1_PrintZero:
     addi $t4, $zero, 48           # '0'
-    sw   $t4, -256($zero)         # write directly to TERMINAL
+    # Write '0' to TERMINAL
+    lui  $t5, 0x03FF
+    ori  $t5, $t5, 0xF000
+    sw   $t4, 0($t5)
 
 Syscall1_Restore:
     # Restore registers
@@ -157,11 +164,16 @@ Syscall5:
 Syscall5_ReadLoop:
     # Wait for character
 Syscall5_Wait:
-    lw   $t5, -240($zero)          # Read KEYBOARD STATUS
+    # Read keyboard status at 0x03FFFF10
+    lui  $t6, 0x03FF
+    ori  $t6, $t6, 0xF010
+    lw   $t5, 0($t6)               # Read KEYBOARD STATUS
     beq  $t5, $zero, Syscall5_Wait # Wait until ready
-    
-    # Read character
-    lw   $t5, -236($zero)          # Read KEYBOARD DATA
+
+    # Read character from 0x03FFFF14
+    lui  $t6, 0x03FF
+    ori  $t6, $t6, 0xF014
+    lw   $t5, 0($t6)               # Read KEYBOARD DATA
     
     # Check for newline (ASCII 10)
     addi $t6, $zero, 10
@@ -261,15 +273,17 @@ Syscall11:
     addi $sp, $sp, -8
     sw   $t0, 0($sp)
     sw   $a0, 4($sp)
-    
-    # Write to terminal
-    sw   $a0, -256($zero)          # TERMINAL (0x3FFFF00)
-    
+
+    # Write to terminal (build TERMINAL address in $t0)
+    lui  $t0, 0x03FF
+    ori  $t0, $t0, 0xF000
+    sw   $a0, 0($t0)               # TERMINAL (0x03FFFF00)
+
     # Restore registers
     lw   $a0, 4($sp)
     lw   $t0, 0($sp)
     addi $sp, $sp, 8
-    
+
     jr   $k0
 
 # ============================================================================
@@ -284,10 +298,16 @@ Syscall12:
     sw   $t1, 4($sp)
     
 Syscall12_Wait:
-    lw   $t1, -240($zero)          # KEYBOARD STATUS
+    # Read keyboard status from 0x03FFFF10
+    lui  $t2, 0x03FF
+    ori  $t2, $t2, 0xF010
+    lw   $t1, 0($t2)               # KEYBOARD STATUS
     beq  $t1, $zero, Syscall12_Wait
-    
-    lw   $v0, -236($zero)          # KEYBOARD DATA
+
+    # Read keyboard data from 0x03FFFF14
+    lui  $t2, 0x03FF
+    ori  $t2, $t2, 0xF014
+    lw   $v0, 0($t2)               # KEYBOARD DATA
     
     # Restore registers
     lw   $t1, 4($sp)
