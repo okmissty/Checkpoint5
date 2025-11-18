@@ -307,13 +307,13 @@ Syscall12:
 Syscall12_Wait:
     # Read keyboard status from 0x03FFFF10
     lui  $t2, 0x03FF
-    ori  $t2, $t2, 0xF010
+    ori  $t2, $t2, 0xFF10
     lw   $t1, 0($t2)               # KEYBOARD STATUS
     beq  $t1, $zero, Syscall12_Wait
 
     # Read keyboard data from 0x03FFFF14
     lui  $t2, 0x03FF
-    ori  $t2, $t2, 0xF014
+    ori  $t2, $t2, 0xFF14
     lw   $v0, 0($t2)               # KEYBOARD DATA
     
     # Restore registers

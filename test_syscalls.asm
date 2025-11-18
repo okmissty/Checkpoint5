@@ -9,9 +9,11 @@ main:
     syscall
     
     addi $a0, $zero, 105      # 'i'
+    addi $v0, $zero, 11
     syscall
     
     addi $a0, $zero, 10       # '\n'
+    addi $v0, $zero, 11
     syscall
     
     # Test syscall 1 - Print integer (positive)
