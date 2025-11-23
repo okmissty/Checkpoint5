@@ -236,8 +236,10 @@ Syscall5_Wait:
     ori  $t6, $t6, 0xFF14
     lw   $t5, 0($t6)               # Read KEYBOARD DATA
     
-    # Check for newline (ASCII 10)
+    # Check for newline (ASCII 10 or 13)
     addi $t6, $zero, 10
+    beq  $t5, $t6, Syscall5_Done
+    addi $t6, $zero, 13
     beq  $t5, $t6, Syscall5_Done
     
     # Check for minus sign (ASCII 45)
@@ -331,8 +333,11 @@ Syscall8_WaitChar:
     ori  $t0, $t0, 0xFF14
     lw   $t2, 0($t0)          # t2 = char
 
-    # If newline (ASCII 10), we're done
-    addi $t1, $zero, 10
+    # Treat both LF (10) and CR (13) as end-of-line
+    addi $t1, $zero, 10       # '\n'
+    beq  $t2, $t1, Syscall8_Done
+
+    addi $t1, $zero, 13       # '\r'
     beq  $t2, $t1, Syscall8_Done
 
     # Store char as a 4-byte word at [t4]
