@@ -1,4 +1,4 @@
-# display_image.asm - Simple image display (5 stars for picture challenge)
+# display_image.asm - Display real image from static memory
 # Tyeon Ford - CMSC 301 Final Project
 
 .data 0x00001000
@@ -8,20 +8,19 @@ done_msg: .asciiz "Display complete!\n"
 .text
 .globl main
 
-# ============================================================================
-# MAIN PROGRAM
-# ============================================================================
 main:
-    # Print title using syscall 4
-    addi $a0, $zero, 0x1000
+    # Print title
+    lui  $a0, 0x0000
+    ori  $a0, $a0, 0x1000
     addi $v0, $zero, 4
     syscall
     
-    # Draw the image from static memory
+    # Draw the image
     jal  draw_stored_image
     
-    # Print done message
-    addi $a0, $zero, 0x1012    # Address after "Loading image...\n"
+    # Print done message  
+    lui  $a0, 0x0000
+    ori  $a0, $a0, 0x1012
     addi $v0, $zero, 4
     syscall
     
@@ -29,9 +28,6 @@ main:
     addi $v0, $zero, 10
     syscall
 
-# ============================================================================
-# DRAW_STORED_IMAGE - Load image from static memory and display on RGB
-# ============================================================================
 draw_stored_image:
     addi $sp, $sp, -20
     sw   $ra, 0($sp)
@@ -40,57 +36,59 @@ draw_stored_image:
     sw   $s2, 12($sp)
     sw   $s3, 16($sp)
     
-    # Image data starts at 0x2000 (from image_data.asm)
+    # Image data at 0x2000
     lui  $s3, 0x0000
     ori  $s3, $s3, 0x2000
     
-    add  $s0, $zero, $zero     # y counter
+    add  $s0, $zero, $zero     # y = 0
     
-draw_img_y:
+draw_y_loop:
     addi $t0, $zero, 256
-    beq  $s0, $t0, draw_img_done
+    beq  $s0, $t0, draw_done   # if y == 256, done
     
-    add  $s1, $zero, $zero     # x counter
+    add  $s1, $zero, $zero     # x = 0
     
-draw_img_x:
+draw_x_loop:
     addi $t0, $zero, 256
-    beq  $s1, $t0, draw_img_y_next
+    beq  $s1, $t0, draw_y_next # if x == 256, next row
     
-    # Load color from static memory
-    lw   $s2, 0($s3)           # Load 24-bit color
-    addi $s3, $s3, 4           # Move to next pixel
+    # Load color from memory
+    lw   $s2, 0($s3)
+    addi $s3, $s3, 4
     
-    # Draw pixel at (x, y) directly to RGB display
-    # RGB X register at 0x3FFFF20
+    # Set X coordinate (0x3FFFF20)
     lui  $t0, 0x03FF
     ori  $t0, $t0, 0xFF20
-    sw   $s1, 0($t0)           # Set X
+    sw   $s1, 0($t0)
     
-    # RGB Y register at 0x3FFFF24
-    addi $t0, $t0, 4
-    sw   $s0, 0($t0)           # Set Y
+    # Set Y coordinate (0x3FFFF24)
+    lui  $t0, 0x03FF
+    ori  $t0, $t0, 0xFF24
+    sw   $s0, 0($t0)
     
-    # RGB Color register at 0x3FFFF28
-    addi $t0, $t0, 4
-    sw   $s2, 0($t0)           # Set Color
+    # Set Color (0x3FFFF28)
+    lui  $t0, 0x03FF
+    ori  $t0, $t0, 0xFF28
+    sw   $s2, 0($t0)
     
-    # RGB Write register at 0x3FFFF2C
-    addi $t0, $t0, 4
+    # Write pixel (0x3FFFF2C)
+    lui  $t0, 0x03FF
+    ori  $t0, $t0, 0xFF2C
     addi $t1, $zero, 1
-    sw   $t1, 0($t0)           # Write pixel
+    sw   $t1, 0($t0)
     
-    addi $s1, $s1, 1           # Next x
-    j    draw_img_x
+    addi $s1, $s1, 1
+    j    draw_x_loop
 
-draw_img_y_next:
-    addi $s0, $s0, 1           # Next y
-    j    draw_img_y
+draw_y_next:
+    addi $s0, $s0, 1
+    j    draw_y_loop
 
-draw_img_done:
+draw_done:
     lw   $s3, 16($sp)
     lw   $s2, 12($sp)
     lw   $s1, 8($sp)
     lw   $s0, 4($sp)
     lw   $ra, 0($sp)
     addi $sp, $sp, 20
-    jr   $ra
+    j

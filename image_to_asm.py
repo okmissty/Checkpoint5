@@ -6,7 +6,6 @@ import struct
 def read_png(filepath):
     """Read PNG file without PIL"""
     with open(filepath, 'rb') as f:
-        # Check PNG signature
         signature = f.read(8)
         if signature != b'\x89PNG\r\n\x1a\n':
             raise ValueError("Not a valid PNG file")
@@ -17,7 +16,6 @@ def read_png(filepath):
         palette = None
         
         while True:
-            # Read chunk length and type
             chunk_len_bytes = f.read(4)
             if len(chunk_len_bytes) < 4:
                 break
@@ -25,10 +23,9 @@ def read_png(filepath):
             chunk_len = struct.unpack('>I', chunk_len_bytes)[0]
             chunk_type = f.read(4)
             chunk_data = f.read(chunk_len)
-            chunk_crc = f.read(4)  # CRC (we'll skip validation)
+            chunk_crc = f.read(4)
             
             if chunk_type == b'IHDR':
-                # Parse image header
                 width = struct.unpack('>I', chunk_data[0:4])[0]
                 height = struct.unpack('>I', chunk_data[4:8])[0]
                 bit_depth = chunk_data[8]
@@ -36,11 +33,9 @@ def read_png(filepath):
                 print(f"PNG: {width}x{height}, bit_depth={bit_depth}, color_type={color_type}")
                 
             elif chunk_type == b'PLTE':
-                # Palette for indexed color
                 palette = chunk_data
                 
             elif chunk_type == b'IDAT':
-                # Compressed image data
                 image_data.extend(chunk_data)
                 
             elif chunk_type == b'IEND':
@@ -49,18 +44,16 @@ def read_png(filepath):
         if not image_data:
             raise ValueError("No image data found in PNG")
         
-        # Decompress the image data
         print("Decompressing image data...")
         raw_data = zlib.decompress(image_data)
         
-        # Parse the decompressed data
         print("Parsing pixel data...")
         pixels = parse_png_data(raw_data, width, height, bit_depth, color_type, palette)
         
         return width, height, pixels
 
 def parse_png_data(raw_data, width, height, bit_depth, color_type, palette):
-    """Parse decompressed PNG data into RGB pixels"""
+    """Parse decompressed PNG data with proper filter handling"""
     pixels = []
     
     # Calculate bytes per pixel
@@ -77,52 +70,52 @@ def parse_png_data(raw_data, width, height, bit_depth, color_type, palette):
     else:
         raise ValueError(f"Unsupported color type: {color_type}")
     
-    bytes_per_pixel = channels * (bit_depth // 8)
-    stride = width * bytes_per_pixel + 1  # +1 for filter byte
+    bytes_per_pixel = channels * max(1, bit_depth // 8)
+    scanline_length = width * bytes_per_pixel
     
     pos = 0
+    prev_row = [0] * scanline_length
+    
     for y in range(height):
         if pos >= len(raw_data):
             break
             
-        # Read filter type (first byte of each scanline)
+        # Read filter type
         filter_type = raw_data[pos]
         pos += 1
         
-        row_data = raw_data[pos:pos + width * bytes_per_pixel]
-        pos += width * bytes_per_pixel
+        # Read raw scanline data
+        raw_scanline = list(raw_data[pos:pos + scanline_length])
+        pos += scanline_length
         
-        # Apply PNG filter (we'll only handle filter type 0 = None for simplicity)
-        # For full PNG support, you'd need to implement all 5 filter types
-        if filter_type != 0:
-            # Simple approach: just use the data as-is (works for many PNGs)
-            pass
+        # Apply PNG filter reconstruction
+        scanline = reconstruct_scanline(raw_scanline, prev_row, filter_type, bytes_per_pixel)
+        prev_row = scanline
         
-        # Convert to RGB
+        # Convert scanline to RGB pixels
         row = []
         for x in range(width):
             pixel_start = x * bytes_per_pixel
             
             if color_type == 2:  # RGB
-                r = row_data[pixel_start]
-                g = row_data[pixel_start + 1]
-                b = row_data[pixel_start + 2]
+                r = scanline[pixel_start]
+                g = scanline[pixel_start + 1]
+                b = scanline[pixel_start + 2]
             elif color_type == 6:  # RGBA
-                r = row_data[pixel_start]
-                g = row_data[pixel_start + 1]
-                b = row_data[pixel_start + 2]
-                # Ignore alpha
+                r = scanline[pixel_start]
+                g = scanline[pixel_start + 1]
+                b = scanline[pixel_start + 2]
             elif color_type == 0:  # Grayscale
-                gray = row_data[pixel_start]
+                gray = scanline[pixel_start]
                 r = g = b = gray
             elif color_type == 3:  # Indexed
-                index = row_data[pixel_start]
-                if palette:
+                index = scanline[pixel_start]
+                if palette and index * 3 + 2 < len(palette):
                     r = palette[index * 3]
                     g = palette[index * 3 + 1]
                     b = palette[index * 3 + 2]
                 else:
-                    r = g = b = index
+                    r = g = b = 0
             else:
                 r = g = b = 0
             
@@ -134,6 +127,47 @@ def parse_png_data(raw_data, width, height, bit_depth, color_type, palette):
             print(f"  Reading: {(y+1)/height*100:.0f}%")
     
     return pixels
+
+def reconstruct_scanline(raw, prev, filter_type, bpp):
+    """Reconstruct scanline with PNG filtering"""
+    result = []
+    
+    for i in range(len(raw)):
+        raw_byte = raw[i]
+        left = result[i - bpp] if i >= bpp else 0
+        above = prev[i]
+        upper_left = prev[i - bpp] if i >= bpp else 0
+        
+        if filter_type == 0:  # None
+            recon = raw_byte
+        elif filter_type == 1:  # Sub
+            recon = (raw_byte + left) & 0xFF
+        elif filter_type == 2:  # Up
+            recon = (raw_byte + above) & 0xFF
+        elif filter_type == 3:  # Average
+            recon = (raw_byte + ((left + above) // 2)) & 0xFF
+        elif filter_type == 4:  # Paeth
+            recon = (raw_byte + paeth_predictor(left, above, upper_left)) & 0xFF
+        else:
+            recon = raw_byte
+        
+        result.append(recon)
+    
+    return result
+
+def paeth_predictor(a, b, c):
+    """Paeth predictor for PNG filter type 4"""
+    p = a + b - c
+    pa = abs(p - a)
+    pb = abs(p - b)
+    pc = abs(p - c)
+    
+    if pa <= pb and pa <= pc:
+        return a
+    elif pb <= pc:
+        return b
+    else:
+        return c
 
 def simple_resize(pixels, old_w, old_h, new_w, new_h):
     """Simple nearest-neighbor resize"""
@@ -187,14 +221,19 @@ def image_to_asm(image_path, output_path):
                     f.write(f"0x{color:06X}")
                     word_count += 1
                 
-                # Progress
                 if (y + 1) % 32 == 0:
                     print(f"  Writing: {(y+1)/256*100:.0f}%")
             
             f.write("\n")
         
         print(f"\nSuccess! Generated {output_path}")
+        print(f"File size: {len(open(output_path).read())} bytes")
         print(f"Total pixels: {word_count}")
+        
+        # Verify first few pixels
+        print(f"\nFirst pixel RGB: {pixels[0][0]}")
+        print(f"First pixel color word: 0x{(pixels[0][0][0] << 16 | pixels[0][0][1] << 8 | pixels[0][0][2]):06X}")
+        
         return True
         
     except Exception as e:
@@ -206,7 +245,6 @@ def image_to_asm(image_path, output_path):
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python3 image_to_asm.py input.png output.asm")
-        print("\nSupports PNG format (no external libraries needed!)")
         sys.exit(1)
     
     success = image_to_asm(sys.argv[1], sys.argv[2])
