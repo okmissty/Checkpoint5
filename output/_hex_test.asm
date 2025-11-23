@@ -18,7 +18,7 @@ Hex_Loop:
     jal  Hex_Set
 
     # Delay so you can see each value
-    addi $t0, $zero, 50000       # tweak if too fast/slow
+    addi $t0, $zero, 15       # tweak if too fast/slow
 Hex_Delay:
     addi $t0, $t0, -1
     bne  $t0, $zero, Hex_Delay
