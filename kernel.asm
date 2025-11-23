@@ -382,6 +382,10 @@ Syscall10_Loop:
 # SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
 # FIX: Removed .align directives to resolve assembler error.
 # ============================================================================
+# ============================================================================
+# SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
+# FIX: Using proven negative offsets for RGB Controller I/O
+# ============================================================================
 # This Syscall supports two modes based on arguments:
 #
 # MODE 1 (Character Print - Project Requirement):
@@ -392,63 +396,52 @@ Syscall10_Loop:
 #   Input:  $a0 = X coordinate (0-255)
 #   Input:  $a1 = Y coordinate (0-255)
 #   Input:  $a2 = Color (0x00RRGGBB)
-#   Action: Draws pixel using the 4-register RGB Controller protocol.
-#
-# Assumption: If $a1 and $a2 are non-zero, it is a pixel draw.
-# If $a1 and $a2 are zero (or not set), it defaults to character print.
+#   Action: Draws pixel using the 4-register RGB Controller protocol at 0xFFFFFF2X.
 
 Syscall11:
     # Save temporary registers ($t0-$t2) and caller arguments ($a0-$a2).
-    # We must save $a0, $a1, $a2 because they are used as arguments.
     addi $sp, $sp, -20
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
     sw   $t2, 8($sp)
-    sw   $a0, 12($sp) # Save original $a0
-    sw   $a1, 16($sp) # Save original $a1
+    sw   $a0, 12($sp) 
+    sw   $a1, 16($sp) 
 
-    # --- MODE CHECK: Is this a Pixel Draw (Mode 2)? ---
-    # Check if $a1 (Y) is non-zero (implies pixel draw)
+    # --- MODE CHECK (unchanged) ---
     bne  $a1, $zero, Syscall11_DrawPixel
-    
-    # Check if $a2 (Color) is non-zero (implies pixel draw - though $a1 check is stronger)
     bne  $a2, $zero, Syscall11_DrawPixel
 
-# --- MODE 1: CHARACTER PRINT ---
+# --- MODE 1: CHARACTER PRINT (Terminal is at 0x03FFFF00, or -256($0)) ---
 Syscall11_PrintChar:
-    # Use $a0 (the character) and write to TERMINAL (0x03FFFF00)
-
-    # Write to terminal (build TERMINAL address in $t0)
+    # Your project test case shows the Terminal is at -256($0) or 0x03FFFF00
+    # Use the absolute address logic from your previous kernel for robustness.
     lui  $t0, 0x03FF
-    ori  $t0, $t0, 0xFF00
-    sw   $a0, 0($t0)         # TERMINAL (0x03FFFF00)
+    ori  $t0, $t0, 0xFF00       # TERMINAL (0x03FFFF00)
+    sw   $a0, 0($t0)
+    j    Syscall11_Restore 
 
-    j    Syscall11_Restore   # Skip pixel draw logic
-
-# --- MODE 2: PIXEL DRAW ---
+# --- MODE 2: PIXEL DRAW (Using I/O Offsets from Working Test Case) ---
 Syscall11_DrawPixel:
     # Arguments: $a0=X, $a1=Y, $a2=Color
     
-    # 1. Write X Coordinate (0x3FFFFE20 = -480($zero))
-    sw   $a0, -480($zero)   # Send X coordinate to the X register
-
-    # 2. Write Y Coordinate (0x3FFFFE24 = -476($zero))
-    sw   $a1, -476($zero)   # Send Y coordinate to the Y register
-
-    # 3. Write Color (RGB) (0x3FFFFE28 = -472($zero))
-    sw   $a2, -472($zero)   # Send 0x00RRGGBB word to the Color register
-
-    # 4. Trigger Write Enable (WE) (0x3FFFFE2C = -468($zero))
-    li   $t0, 1             # Load '1' to trigger the write
-    sw   $t0, -468($zero)   # Pulse high to latch the data
+    # 1. Write X Coordinate (0xFFFFFF20)
+    sw   $a0, -224($zero)   # X-Coord, using offset from working testcase
     
-    # 5. Clear Trigger 
-    sw   $zero, -468($zero) # Write '0' to reset the WE flag (using $zero)
+    # 2. Write Y Coordinate (0xFFFFFF24)
+    sw   $a1, -220($zero)   # Y-Coord, using offset from working testcase
 
+    # 3. Write Color (RGB) (0xFFFFFF28)
+    sw   $a2, -216($zero)   # Color, using offset from working testcase
+
+    # 4. Trigger Write Enable (WE) (0xFFFFFF2C)
+    li   $t1, 1                 # Use $t1 for the WE signal (value 1)
+    sw   $t1, -212($zero)       # Pulse HIGH to 0xFFFFFF2C
+    
+    # 5. Clear Trigger (Pulse LOW, using $zero)
+    sw   $zero, -212($zero)     # Pulse LOW to 0xFFFFFF2C
 
 # --- RESTORE AND RETURN ---
 Syscall11_Restore:
-    # Restore saved registers: $a1, $a0, $t2, $t1, $t0
     lw   $a1, 16($sp)
     lw   $a0, 12($sp)
     lw   $t2, 8($sp)
@@ -457,8 +450,7 @@ Syscall11_Restore:
     addi $sp, $sp, 20
 
     jr   $k0
-# End of Syscall 11 (combined version)
-
+# End of Syscall 11 (Final fixed version)
 # =====================================================================
 # SYSCALL 12: READ CHARACTER
 # Output: v0 = character (ASCII)
