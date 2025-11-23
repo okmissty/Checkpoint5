@@ -299,7 +299,7 @@ Syscall5_Positive:
 # Keyboard STATUS: 0x3FFFF10
 # Keyboard DATA:   0x3FFFF14
 Syscall8:
-    # Save registers we will use (v0 is our return value, so don't save that)
+    # Save registers we will use (keep $v0 as return)
     addi $sp, $sp, -28
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
@@ -309,40 +309,35 @@ Syscall8:
     sw   $t5, 20($sp)
     sw   $a0, 24($sp)
 
-    # t0 = 0x03FFxxxx base
-    lui  $t0, 0x03FF
-
-    # t1 = KEYBOARD STATUS (0x3FFFF10)
-    ori  $t1, $t0, 0xFF10
-
-    # t2 = KEYBOARD DATA (0x3FFFF14)
-    ori  $t2, $t0, 0xFF14
-
     # t3 = &__HEAP_POINTER__
     la   $t3, __HEAP_POINTER__
-
     # t4 = current heap pointer (start of new string)
     lw   $t4, 0($t3)
-
     # v0 = pointer to start of string (return value)
     add  $v0, $t4, $zero
 
 Syscall8_ReadLoop:
+
 Syscall8_WaitChar:
     # Wait until a character is ready
-    lw   $t5, 0($t1)            # read STATUS
-    beq  $t5, $zero, Syscall8_WaitChar
+    # Load KEYBOARD STATUS address (0x03FFFF10) into t0
+    lui  $t0, 0x03FF
+    ori  $t0, $t0, 0xFF10
+    lw   $t1, 0($t0)          # t1 = STATUS
+    beq  $t1, $zero, Syscall8_WaitChar
 
-    # Read the character
-    lw   $t5, 0($t2)            # t5 = char
+    # Read the character from DATA (0x03FFFF14)
+    lui  $t0, 0x03FF
+    ori  $t0, $t0, 0xFF14
+    lw   $t2, 0($t0)          # t2 = char
 
     # If newline (ASCII 10), we're done
-    addi $t0, $zero, 10
-    beq  $t5, $t0, Syscall8_Done
+    addi $t1, $zero, 10
+    beq  $t2, $t1, Syscall8_Done
 
     # Store char as a 4-byte word at [t4]
-    sw   $t5, 0($t4)
-    addi $t4, $t4, 4            # advance heap ptr
+    sw   $t2, 0($t4)
+    addi $t4, $t4, 4          # advance heap pointer
     j    Syscall8_ReadLoop
 
 Syscall8_Done:
