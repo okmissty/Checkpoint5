@@ -376,75 +376,28 @@ Syscall10_Loop:
     j    Syscall10_Loop            # Infinite loop
 
 # ============================================================================
-# SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
+# SYSCALL 11: PRINT CHARACTER
 # ============================================================================
-
-# This Syscall supports two modes based on arguments:
-#
-# MODE 1 (Character Print - Project Requirement):
-#   Input:  $a0 = Character (ASCII)
-#   Action: Prints character to the TERMINAL at 0x03FFFF00.
-#
-# MODE 2 (Draw Pixel - 5-Star Challenge):
-#   Input:  $a0 = X coordinate (0-255)
-#   Input:  $a1 = Y coordinate (0-255)
-#   Input:  $a2 = Color (0x00RRGGBB)
-#   Action: Draws pixel using the 4-register RGB Controller protocol at 0xFFFFFF2X.
-
+# Input:  $a0 = character to print (ASCII)
+# Output: Prints character to terminal at -256($zero)
 Syscall11:
-    # Save temporary registers ($t0-$t2) and caller arguments ($a0-$a2).
-    addi $sp, $sp, -20
+    # Save registers
+    addi $sp, $sp, -8
     sw   $t0, 0($sp)
-    sw   $t1, 4($sp)
-    sw   $t2, 8($sp)
-    sw   $a0, 12($sp) 
-    sw   $a1, 16($sp) 
+    sw   $a0, 4($sp)
 
-    # --- MODE CHECK (unchanged) ---
-    bne  $a1, $zero, Syscall11_DrawPixel
-    bne  $a2, $zero, Syscall11_DrawPixel
-
-# --- MODE 1: CHARACTER PRINT (Terminal is at 0x03FFFF00, or -256($0)) ---
-Syscall11_PrintChar:
-    # Your project test case shows the Terminal is at -256($0) or 0x03FFFF00
-    # Use the absolute address logic from your previous kernel for robustness.
+    # Write to terminal (build TERMINAL address in $t0)
     lui  $t0, 0x03FF
-    ori  $t0, $t0, 0xFF00       # TERMINAL (0x03FFFF00)
-    sw   $a0, 0($t0)
-    j    Syscall11_Restore 
+    ori  $t0, $t0, 0xFF00
+    sw   $a0, 0($t0)               # TERMINAL (0x03FFFF00)
 
-# --- MODE 2: PIXEL DRAW (Using I/O Offsets from Working Test Case) ---
-Syscall11_DrawPixel:
-    # Arguments: $a0=X, $a1=Y, $a2=Color
-    
-    # 1. Write X Coordinate (0xFFFFFF20)
-    sw   $a0, -224($zero)   # X-Coord, using offset from working testcase
-    
-    # 2. Write Y Coordinate (0xFFFFFF24)
-    sw   $a1, -220($zero)   # Y-Coord, using offset from working testcase
-
-    # 3. Write Color (RGB) (0xFFFFFF28)
-    sw   $a2, -216($zero)   # Color, using offset from working testcase
-
-    # 4. Trigger Write Enable (WE) (0xFFFFFF2C)
-    li   $t1, 1                 # Use $t1 for the WE signal (value 1)
-    sw   $t1, -212($zero)       # Pulse HIGH to 0xFFFFFF2C
-    
-    # 5. Clear Trigger (Pulse LOW, using $zero)
-    sw   $zero, -212($zero)     # Pulse LOW to 0xFFFFFF2C
-
-
-# --- RESTORE AND RETURN ---
-Syscall11_Restore:
-    lw   $a1, 16($sp)
-    lw   $a0, 12($sp)
-    lw   $t2, 8($sp)
-    lw   $t1, 4($sp)
+    # Restore registers
+    lw   $a0, 4($sp)
     lw   $t0, 0($sp)
-    addi $sp, $sp, 20
+    addi $sp, $sp, 8
 
     jr   $k0
-# End of Syscall 11 (Final fixed version)
+
 # =====================================================================
 # SYSCALL 12: READ CHARACTER
 # Output: v0 = character (ASCII)

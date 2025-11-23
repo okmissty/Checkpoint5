@@ -1,16 +1,21 @@
 # ==============================================================================
-# MIPS Draw Image Program (Final Simple Arithmetic)
-# Purpose: Draws a 256x256 image loaded at 0x00010000.
-# Fixes: Uses safe arithmetic (AND/SRL) for X/Y calculation to avoid DIV hazards.
+# MIPS Draw Image Program (Direct I/O)
+#
+# **FINAL VERSION**
+# This program draws a 256x256 image by performing 4 sequential direct memory 
+# writes to the RGB Controller I/O addresses (0xFFFFFF20 - 0xFFFFFF2C) inside
+# the loop, bypassing the kernel's Syscall 11 entirely.
+#
+# Data is loaded from 0x00010000 (manually loaded via image_data.hex).
+# Uses nested loops (Y outer, X inner).
 # ==============================================================================
 
 # Register Usage:
-# $s0: Base address of image data (0x00010000).
-# $s3: Total Pixels (65536) - Loop limit.
-# $s4: Current Pixel Index (0 to 65535) - Primary loop counter.
-# $t0: Pixel Color (loaded from memory).
-# $t1: Byte Offset for memory loading.
-# $t2: Calculated memory address.
+# $s0: Base address of the image data (0x00010000).
+# $s1: Current Y coordinate (Outer Loop Counter, 0-255).
+# $s2: Current X coordinate (Inner Loop Counter, 0-255).
+# $s3: Image dimension (256) - Loop boundary.
+# $s4: Total pixel index (0 to 65535) used for memory offset.
 
 .text
 .globl main
@@ -18,50 +23,69 @@
 main:
     # 1. Initialization
     
-    # Set the hardcoded base address where the image data is loaded (0x00010000)
-    # The image_data.hex file MUST be loaded at this address.
-    lui $s0, 0x0001             # $s0 = 0x0001xxxx
-    ori $s0, $s0, 0x0000        # $s0 = 0x00010000 (Image Data Start)
+    # Load the base address of the image data (0x00010000) into $s0
+    # Uses LUI/ORI to guarantee the 32-bit address, replacing LA which relies on the assembler.
+    lui $s0, 0x0001             # $s0 = 0x00010000 
     
-    # Load 65536 (0x00010000) explicitly - Loop limit
-    lui $s3, 0x0001             
-    ori $s3, $s3, 0x0000        # $s3 = 65536 (Loop limit)
+    # Load the image dimension (256) and initialize counters
+    li $s3, 256                 # $s3 = 256 (Max dimension/Loop boundary)
+    li $s1, 0                   # $s1 = 0 (Start Y coordinate)
+    li $s4, 0                   # $s4 = 0 (Start linear pixel index)
 
-    li $s4, 0                   # $s4 = 0 (Start Pixel Index)
-
-    # 2. Main Drawing Loop (Iterates 65,536 times)
-DrawLoop:
-    # Check if Index ($s4) >= 65536 (Stop condition)
-    bge $s4, $s3, EndProgram
+    # 2. Outer Loop (Y coordinate, 0 to 255)
+OuterLoop_Y:
+    # Check if Y >= 256 (Stop condition for Y)
+    bge $s1, $s3, EndProgram
     
-    # --- 2A. Pixel Address and Color Loading ---
-    # Address = Base ($s0) + (Index ($s4) * 4)
-    sll $t1, $s4, 2             # $t1 = Index * 4 (byte offset)
-    add $t2, $s0, $t1           # $t2 = Address of current pixel
+    # Initialize X coordinate for the inner loop
+    li $s2, 0                   # $s2 = 0 (Start X coordinate)
+
+    # 3. Inner Loop (X coordinate, 0 to 255)
+InnerLoop_X:
+    # Check if X >= 256 (Stop condition for X)
+    bge $s2, $s3, EndRow
+    
+    # --- Pixel Address Calculation ---
+    # Address = Base ($s0) + (Index ($s4) * 4 bytes/word)
+    sll $t1, $s4, 2             # $t1 = $s4 * 4 (byte offset)
+    add $t2, $s0, $t1           # $t2 = Address of current pixel in memory
+    
+    # --- Load Pixel Color ---
     lw $t0, 0($t2)              # $t0 = Pixel Color (0x00RRGGBB)
 
-    # --- 2B. Calculate X and Y Coordinates (Safe Arithmetic) ---
-    # The image is 256x256. 256 = 2^8.
+    # --- DIRECT I/O DRAW PIXEL ---
+    # This section performs the 4 required SW operations, exactly mimicking the 
+    # working test case code, using the registers: $s2=X, $s1=Y, $t0=Color.
     
-    # X Coordinate (Modulo 256): Index AND 0xFF
-    li $t1, 0x00FF              # $t1 = Mask for lowest 8 bits (255)
-    and $a0, $s4, $t1           # $a0 = X coordinate (Index % 256)
+    # 1. Write X Coordinate (0xFFFFFF20)
+    sw $s2, -224($zero)         # $s2 (X) -> 0xFFFFFF20
+    
+    # 2. Write Y Coordinate (0xFFFFFF24)
+    sw $s1, -220($zero)         # $s1 (Y) -> 0xFFFFFF24
+    
+    # 3. Write Color (0xFFFFFF28)
+    sw $t0, -216($zero)         # $t0 (Color) -> 0xFFFFFF28
+    
+    # 4. Write Enable (WE) Pulse (0xFFFFFF2C)
+    li $t9, 1                   # Load 1 into a temporary register
+    sw $t9, -212($zero)         # Pulse HIGH to 0xFFFFFF2C (Draws the pixel)
+    sw $zero, -212($zero)       # Pulse LOW immediately
 
-    # Y Coordinate (Division by 256): Index >> 8
-    srl $a1, $s4, 8             # $a1 = Y coordinate (Index / 256)
+    # --- Increment Counters ---
+    addi $s2, $s2, 1            # $s2 = X + 1
+    addi $s4, $s4, 1            # $s4 = Linear Index + 1
     
-    # --- 2C. Call Syscall 11 (Draw Pixel) ---
-    # Syscall 11 expects: $a0=X, $a1=Y, $a2=Color
-    add $a2, $t0, $zero         # $a2 = Color (from loaded $t0)
-    
-    li $v0, 11                  # Set syscall code $v0 = 11
-    syscall                     # Execute Syscall (Draws the pixel)
+    # Repeat X Loop
+    j InnerLoop_X
 
-    # --- 2D. Increment and Loop ---
-    addi $s4, $s4, 1            # $s4 = Index + 1
-    j DrawLoop
+EndRow:
+    # 4. End of Row
+    addi $s1, $s1, 1            # $s1 = Y + 1 (Next Row)
+    
+    # Repeat Y Loop
+    j OuterLoop_Y
 
 EndProgram:
-    # 3. End the program
-    li $v0, 10
-    syscall
+    # 5. End the program
+    li $v0, 10                  # Set syscall code $v0 = 10 (Exit Program)
+    syscall                     # Execute Syscall (loops forever in kernel)
