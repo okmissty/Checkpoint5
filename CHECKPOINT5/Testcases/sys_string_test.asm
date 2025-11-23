@@ -1,16 +1,20 @@
 ##############################################
 # sys_string_test.asm
 # Test syscall 4 (print string) and 8 (read string)
-# Assemble:
-#   ./assemble kernel.asm CHECKPOINT5/sys_string_test.asm str_static.bin str_inst.bin
 ##############################################
 
 .text
+.globl main
 
 main:
-    # Print prompt: "Enter a line: \n"
+    # Print prompt: "Enter a line:"
     la   $a0, msg_prompt
     addi $v0, $zero, 4      # syscall 4: print string
+    syscall
+
+    # Print newline after the prompt
+    addi $a0, $zero, 10     # '\n'
+    addi $v0, $zero, 11     # syscall 11: print char
     syscall
 
     # Read a line into heap, v0 = pointer to heap string
@@ -30,9 +34,9 @@ main:
     addi $v0, $zero, 4
     syscall
 
-    # Print newline using syscall 11 (print char)
+    # Print newline at the end
+    addi $a0, $zero, 10
     addi $v0, $zero, 11
-    addi $a0, $zero, 10     # '\n'
     syscall
 
     # Exit program
@@ -42,8 +46,8 @@ main:
 ##############################################
 .data
 
-msg_prompt: 
-    .asciiz "Enter a line:\n"   # NOTE: newline here
-    .word 10                    # <— real newline
-msg_prefix: 
+msg_prompt:
+    .asciiz "Enter a line:"      # no '\n' or extra .word
+
+msg_prefix:
     .asciiz "You typed: "
