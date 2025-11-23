@@ -378,6 +378,10 @@ Syscall10_Loop:
 # ============================================================================
 # SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
 # ============================================================================
+# # ============================================================================
+# SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
+# FIX: Removed .align directives to resolve assembler error.
+# ============================================================================
 # This Syscall supports two modes based on arguments:
 #
 # MODE 1 (Character Print - Project Requirement):

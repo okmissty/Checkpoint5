@@ -1,7 +1,7 @@
 # ==============================================================================
 # MIPS Draw Image Program (draw_mango.asm)
 # Draws a 256x256 image by iterating through coordinates and calling Syscall 11.
-# This version is designed for the 4-register RGB Controller protocol.
+# FIX: Replaced 'move' with 'add' due to assembler limitation.
 # ==============================================================================
 
 # Register Usage:
@@ -12,7 +12,6 @@
 # $s4: Total pixel index (0 to 65535) used for memory offset.
 
 .text
-.align 2
 .globl main
 
 main:
@@ -50,9 +49,15 @@ InnerLoop_X:
 
     # --- Call Syscall 11 (Draw Pixel) ---
     # Syscall 11 now expects: $a0=X, $a1=Y, $a2=Color
-    move $a0, $s2           # $a0 = X coordinate
-    move $a1, $s1           # $a1 = Y coordinate
-    move $a2, $t0           # $a2 = Color (0x00RRGGBB)
+    
+    # Replace 'move $a0, $s2' with 'add $a0, $s2, $zero'
+    add $a0, $s2, $zero     # $a0 = X coordinate
+    
+    # Replace 'move $a1, $s1' with 'add $a1, $s1, $zero'
+    add $a1, $s1, $zero     # $a1 = Y coordinate
+    
+    # Replace 'move $a2, $t0' with 'add $a2, $t0, $zero'
+    add $a2, $t0, $zero     # $a2 = Color (0x00RRGGBB)
     
     li $v0, 11              # Set syscall code $v0 = 11
     syscall                 # Execute Syscall (Draws the pixel)
@@ -81,7 +86,6 @@ EndProgram:
 # This block reserves space for the image data.
 # ==============================================================================
 .data
-.align 2
 IMAGE_DATA: 
     # Your assembler must read the 65536 lines of 'image_data.txt' 
     # and place those 32-bit words starting at this address.
