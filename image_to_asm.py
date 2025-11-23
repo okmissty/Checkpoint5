@@ -3,20 +3,19 @@ from PIL import Image
 import os
 
 # --- CONFIGURATION ---
-IMAGE_FILENAME = "mango.png" # Using the provided image file name
-OUTPUT_FILENAME = "image_data.txt" # The static memory file for the assembler
-IMAGE_SIZE = 256 # As per Project 5 Challenge requirement (256x256)
+IMAGE_FILENAME = "mango.png" 
+OUTPUT_FILENAME = "image_data.hex" # Outputting Logisim v3.0 hex file
+IMAGE_SIZE = 256
+START_ADDRESS = 0x00010000 # Must match the address used in draw_mango.asm
 # ---------------------
 
-def image_to_static_memory(image_path, output_path, target_size):
+def image_to_v3_hex(image_path, output_path, target_size, start_address):
     """
-    Converts a square image into a list of 32-bit (ARGB) pixel values
-    suitable for MIPS static memory storage.
-    Format: 0x00RRGGBB (32-bit word, where R, G, B are 8 bits each)
+    Converts image data into Logisim's v3.0 hex format for direct RAM loading.
+    Format: v3.0 hex <start_address> <word1> <word2> ...
     """
     if not os.path.exists(image_path):
         print(f"Error: Image file not found at '{image_path}'")
-        print("Please ensure the image is in the same directory and named correctly.")
         return
 
     print(f"Loading image: {image_path}...")
@@ -33,28 +32,28 @@ def image_to_static_memory(image_path, output_path, target_size):
     pixels = list(img.getdata())
     total_pixels = target_size * target_size
     
-    if len(pixels) != total_pixels:
-        print(f"Warning: Expected {total_pixels} pixels, but found {len(pixels)}. Check image size.")
-        return
-
     print(f"Processing {total_pixels} pixels...")
 
-    pixel_data_words = []
-
-    for r, g, b in pixels:
-        # Combine R, G, B into a single 32-bit word (0x00RRGGBB)
-        word = (0x00 << 24) | (r << 16) | (g << 8) | b
-        pixel_data_words.append(word)
-
     with open(output_path, 'w') as f:
-        f.write(f"# Static memory image data for {image_path}, {target_size}x{target_size} pixels.\n")
-        f.write(f"# Total pixels: {total_pixels}\n")
-        
-        for word in pixel_data_words:
-            f.write(f"0x{word:08X}\n")
+        # 1. Write the v3.0 hex header and start address
+        f.write("v3.0 hex\n")
+        f.write(f"{start_address:X}\n")
 
-    print(f"Successfully generated static memory data in '{output_path}'.")
-    print(f"Total pixel words generated: {len(pixel_data_words)}")
+        # 2. Write the 65,536 pixel words
+        line_count = 0
+        for r, g, b in pixels:
+            # Combine R, G, B into a single 32-bit word (0x00RRGGBB)
+            # The word is written in text, so Logisim handles the endianness on import
+            word = (0x00 << 24) | (r << 16) | (g << 8) | b
+            f.write(f"{word:08X} ") # Write as 8-digit hex (e.g., FF A5 00)
+            
+            line_count += 1
+            if line_count % 8 == 0: # 8 words per line for readability
+                f.write("\n")
+        
+    print(f"\nSuccessfully generated Logisim-compatible hex data in '{output_path}'.")
+    print(f"*** Load this file directly into your Data RAM starting at address {start_address:X}. ***")
 
 if __name__ == "__main__":
-    image_to_static_memory(IMAGE_FILENAME, OUTPUT_FILENAME, IMAGE_SIZE)
+    # Note: Ensure you have the Pillow library installed: pip install Pillow
+    image_to_v3_hex(IMAGE_FILENAME, OUTPUT_FILENAME, IMAGE_SIZE, START_ADDRESS)

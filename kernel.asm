@@ -378,14 +378,7 @@ Syscall10_Loop:
 # ============================================================================
 # SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
 # ============================================================================
-# # ============================================================================
-# SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
-# FIX: Removed .align directives to resolve assembler error.
-# ============================================================================
-# ============================================================================
-# SYSCALL 11: DUAL-FUNCTION (Character Print OR Draw Pixel)
-# FIX: Using proven negative offsets for RGB Controller I/O
-# ============================================================================
+
 # This Syscall supports two modes based on arguments:
 #
 # MODE 1 (Character Print - Project Requirement):
@@ -439,6 +432,7 @@ Syscall11_DrawPixel:
     
     # 5. Clear Trigger (Pulse LOW, using $zero)
     sw   $zero, -212($zero)     # Pulse LOW to 0xFFFFFF2C
+
 
 # --- RESTORE AND RETURN ---
 Syscall11_Restore:
