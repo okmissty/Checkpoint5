@@ -11,4 +11,5 @@ main:
 
 .data
 msg:
-    .asciiz "Hello from static .asciiz!\n"
+    .asciiz "Hello from static .asciiz!"
+    .word 10          # <— real newline
