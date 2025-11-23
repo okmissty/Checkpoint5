@@ -11,8 +11,8 @@ add_test:
   addi $v0, $0, 5
   syscall #read one integer
   add $s0, $0, $v0
-  #addi $v0, $0, 12
-  #syscall #read extra character # TODO: Do I need to revise how the "enter" character is handled?
+  addi $v0, $0, 12
+  syscall #read extra character 
   addi $v0, $0, 5
   syscall #read another integer
   add $a0, $s0, $v0

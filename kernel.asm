@@ -3,7 +3,7 @@
 # This file must be assembled FIRST before any user program
 # Usage: ./assemble kernel.asm myprogram.asm static.bin inst.bin
 
-    .text 0x00000000
+    .text 
 
 # ============================================================================
 # SYSCALL DISPATCHER - Line 0 starts here
@@ -327,7 +327,7 @@ Syscall12_Wait:
 # ============================================================================
 # This section stores kernel data in OS memory space (0x3FFF000 - 0x3FFFFEFC)
 
-    .data 0x3FFF000
+    .data 
 __HEAP_POINTER__:
     .word 0                        # Heap pointer storage
 
