@@ -1,104 +1,88 @@
-# display_image.asm - Display 64x64 or 256x256 image
-# Tyeon Ford - CMSC 301 Final Project
+# ==============================================================================
+# MIPS Draw Image Program (draw_mango.asm)
+# Draws a 256x256 image by iterating through coordinates and calling Syscall 11.
+# This version is designed for the 4-register RGB Controller protocol.
+# ==============================================================================
 
-.data 0x00001000
-title: .asciiz "Loading image...\n"
-done_msg: .asciiz "Display complete!\n"
+# Register Usage:
+# $s0: Base address of the image data (start of IMAGE_DATA).
+# $s1: Current Y coordinate (Outer Loop Counter, 0-255).
+# $s2: Current X coordinate (Inner Loop Counter, 0-255).
+# $s3: Image dimension (256) - Loop boundary.
+# $s4: Total pixel index (0 to 65535) used for memory offset.
 
 .text
+.align 2
 .globl main
 
 main:
-    # Initialize stack pointer
-    addi $sp, $zero, -4096
+    # 1. Initialization
     
-    # Print title
-    lui  $a0, 0x0000
-    ori  $a0, $a0, 0x1000
-    addi $v0, $zero, 4
-    syscall
+    # Load the base address of the image data into $s0
+    la $s0, IMAGE_DATA      
     
-    # Draw the image
-    jal  draw_stored_image
-    
-    # Print done message
-    lui  $a0, 0x0000
-    ori  $a0, $a0, 0x1012
-    addi $v0, $zero, 4
-    syscall
-    
-    # Exit
-    addi $v0, $zero, 10
-    syscall
+    # Load the image dimension (256) and initialize counters
+    li $s3, 256             # $s3 = 256 (Max dimension/Loop boundary)
+    li $s1, 0               # $s1 = 0 (Start Y coordinate)
+    li $s4, 0               # $s4 = 0 (Start linear pixel index)
 
-draw_stored_image:
-    addi $sp, $sp, -28
-    sw   $ra, 0($sp)
-    sw   $s0, 4($sp)
-    sw   $s1, 8($sp)
-    sw   $s2, 12($sp)
-    sw   $s3, 16($sp)
-    sw   $s4, 20($sp)
-    sw   $s5, 24($sp)
+    # 2. Outer Loop (Y coordinate, 0 to 255)
+OuterLoop_Y:
+    # Check if Y >= 256 (Stop condition for Y)
+    bge $s1, $s3, EndProgram
     
-    # Load image width from 0x2000
-    lui  $t0, 0x0000
-    ori  $t0, $t0, 0x2000
-    lw   $s4, 0($t0)           # width
-    
-    # Load image height from 0x2004
-    lw   $s5, 4($t0)           # height
-    
-    # Image data starts at 0x2008 (after width and height)
-    lui  $s3, 0x0000
-    ori  $s3, $s3, 0x2008
-    
-    # y = 0
-    add  $s0, $zero, $zero
-    
-draw_y_loop:
-    # if y >= height, done
-    slt  $t0, $s0, $s5
-    beq  $t0, $zero, draw_done
-    
-    # x = 0
-    add  $s1, $zero, $zero
-    
-draw_x_loop:
-    # if x >= width, next row
-    slt  $t0, $s1, $s4
-    beq  $t0, $zero, draw_y_next
-    
-    # Load color from image data
-    lw   $s2, 0($s3)
-    addi $s3, $s3, 4
-    
-    # Write to RGB controller using negative offsets from $zero
-    # -224 = 0xFFFFFF20 -> 26-bit = 0x3FFFF20 (X)
-    # -220 = 0xFFFFFF24 -> 26-bit = 0x3FFFF24 (Y)
-    # -216 = 0xFFFFFF28 -> 26-bit = 0x3FFFF28 (Color)
-    # -212 = 0xFFFFFF2C -> 26-bit = 0x3FFFF2C (Write)
-    sw   $s1, -224($zero)      # X coordinate
-    sw   $s0, -220($zero)      # Y coordinate
-    sw   $s2, -216($zero)      # Color
-    sw   $zero, -212($zero)    # Write pixel (write 0 to trigger)
-    
-    # x++
-    addi $s1, $s1, 1
-    j    draw_x_loop
+    # Initialize X coordinate for the inner loop
+    li $s2, 0               # $s2 = 0 (Start X coordinate)
 
-draw_y_next:
-    # y++
-    addi $s0, $s0, 1
-    j    draw_y_loop
+    # 3. Inner Loop (X coordinate, 0 to 255)
+InnerLoop_X:
+    # Check if X >= 256 (Stop condition for X)
+    bge $s2, $s3, EndRow
+    
+    # --- Pixel Address Calculation ---
+    # The image data is stored linearly (Row 0, then Row 1, etc.)
+    # Address = Base ($s0) + (Index ($s4) * 4 bytes/word)
+    sll $t1, $s4, 2         # $t1 = $s4 * 4 (byte offset)
+    add $t2, $s0, $t1       # $t2 = Address of current pixel in memory
+    
+    # --- Load Pixel Color ---
+    lw $t0, 0($t2)          # $t0 = Pixel Color (0x00RRGGBB)
 
-draw_done:
-    lw   $s5, 24($sp)
-    lw   $s4, 20($sp)
-    lw   $s3, 16($sp)
-    lw   $s2, 12($sp)
-    lw   $s1, 8($sp)
-    lw   $s0, 4($sp)
-    lw   $ra, 0($sp)
-    addi $sp, $sp, 28
-    jr   $ra
+    # --- Call Syscall 11 (Draw Pixel) ---
+    # Syscall 11 now expects: $a0=X, $a1=Y, $a2=Color
+    move $a0, $s2           # $a0 = X coordinate
+    move $a1, $s1           # $a1 = Y coordinate
+    move $a2, $t0           # $a2 = Color (0x00RRGGBB)
+    
+    li $v0, 11              # Set syscall code $v0 = 11
+    syscall                 # Execute Syscall (Draws the pixel)
+
+    # --- Increment Counters ---
+    addi $s2, $s2, 1        # $s2 = X + 1
+    addi $s4, $s4, 1        # $s4 = Linear Index + 1
+    
+    # Repeat X Loop
+    j InnerLoop_X
+
+EndRow:
+    # 4. End of Row
+    addi $s1, $s1, 1        # $s1 = Y + 1 (Next Row)
+    
+    # Repeat Y Loop
+    j OuterLoop_Y
+
+EndProgram:
+    # 5. End the program
+    li $v0, 10              # Set syscall code $v0 = 10 (Exit Program)
+    syscall                 # Execute Syscall (loops forever in kernel)
+
+# ==============================================================================
+# Static Memory Data
+# This block reserves space for the image data.
+# ==============================================================================
+.data
+.align 2
+IMAGE_DATA: 
+    # Your assembler must read the 65536 lines of 'image_data.txt' 
+    # and place those 32-bit words starting at this address.
+    .space 262144 # 65536 words * 4 bytes/word = 262,144 bytes
