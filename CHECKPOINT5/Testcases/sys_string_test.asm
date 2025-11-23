@@ -46,8 +46,6 @@ main:
 ##############################################
 .data
 
-msg_prompt:
-    .asciiz "Enter a line:"      # no '\n' or extra .word
+msg_prompt: .asciiz "Enter a line:"      # no '\n' or extra .word
 
-msg_prefix:
-    .asciiz "You typed: "
+msg_prefix: .asciiz "You typed: "
