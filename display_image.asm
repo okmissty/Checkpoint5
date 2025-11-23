@@ -1,4 +1,4 @@
-# display_image.asm - Display real image from static memory
+# display_image.asm - Display image (works with any size)
 # Tyeon Ford - CMSC 301 Final Project
 
 .data 0x00001000
@@ -9,59 +9,60 @@ done_msg: .asciiz "Display complete!\n"
 .globl main
 
 main:
-    # Print title
     lui  $a0, 0x0000
     ori  $a0, $a0, 0x1000
     addi $v0, $zero, 4
     syscall
     
-    # Draw the image
     jal  draw_stored_image
     
-    # Print done message  
     lui  $a0, 0x0000
     ori  $a0, $a0, 0x1012
     addi $v0, $zero, 4
     syscall
     
-    # Exit
     addi $v0, $zero, 10
     syscall
 
 draw_stored_image:
-    addi $sp, $sp, -20
+    addi $sp, $sp, -24
     sw   $ra, 0($sp)
     sw   $s0, 4($sp)
     sw   $s1, 8($sp)
     sw   $s2, 12($sp)
     sw   $s3, 16($sp)
+    sw   $s4, 20($sp)
     
-    # Image data at 0x2000
+    # Load image width and height from static memory
+    lui  $t0, 0x0000
+    ori  $t0, $t0, 0x2000
+    lw   $s4, 0($t0)           # width
+    lw   $s5, 4($t0)           # height
+    
+    # Image data starts after width/height
     lui  $s3, 0x0000
-    ori  $s3, $s3, 0x2000
+    ori  $s3, $s3, 0x2008      # Skip 2 words (width, height)
     
     add  $s0, $zero, $zero     # y = 0
     
 draw_y_loop:
-    addi $t0, $zero, 256
-    beq  $s0, $t0, draw_done   # if y == 256, done
+    beq  $s0, $s5, draw_done   # if y == height, done
     
     add  $s1, $zero, $zero     # x = 0
     
 draw_x_loop:
-    addi $t0, $zero, 256
-    beq  $s1, $t0, draw_y_next # if x == 256, next row
+    beq  $s1, $s4, draw_y_next # if x == width, next row
     
-    # Load color from memory
+    # Load color
     lw   $s2, 0($s3)
     addi $s3, $s3, 4
     
-    # Set X coordinate (0x3FFFF20)
+    # Set X (0x3FFFF20)
     lui  $t0, 0x03FF
     ori  $t0, $t0, 0xFF20
     sw   $s1, 0($t0)
     
-    # Set Y coordinate (0x3FFFF24)
+    # Set Y (0x3FFFF24)
     lui  $t0, 0x03FF
     ori  $t0, $t0, 0xFF24
     sw   $s0, 0($t0)
@@ -71,7 +72,7 @@ draw_x_loop:
     ori  $t0, $t0, 0xFF28
     sw   $s2, 0($t0)
     
-    # Write pixel (0x3FFFF2C)
+    # Write (0x3FFFF2C)
     lui  $t0, 0x03FF
     ori  $t0, $t0, 0xFF2C
     addi $t1, $zero, 1
@@ -85,10 +86,11 @@ draw_y_next:
     j    draw_y_loop
 
 draw_done:
+    lw   $s4, 20($sp)
     lw   $s3, 16($sp)
     lw   $s2, 12($sp)
     lw   $s1, 8($sp)
     lw   $s0, 4($sp)
     lw   $ra, 0($sp)
-    addi $sp, $sp, 20
-    j
+    addi $sp, $sp, 24
+    jr   $ra
