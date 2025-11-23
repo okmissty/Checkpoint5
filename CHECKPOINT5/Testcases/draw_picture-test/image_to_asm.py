@@ -2,7 +2,8 @@ import struct
 from PIL import Image
 import os
 
-# --- CONFIGURATION ---
+# Config area, you can change these values as needed
+# Change filename if you want to use a different image and make sure the image is 256x256 pixels
 IMAGE_FILENAME = "mango.png" 
 OUTPUT_FILENAME = "image_data.hex" # Outputting Logisim v3.0 hex file
 IMAGE_SIZE = 256
@@ -35,11 +36,11 @@ def image_to_v3_hex(image_path, output_path, target_size, start_address):
     print(f"Processing {total_pixels} pixels...")
 
     with open(output_path, 'w') as f:
-        # 1. Write the v3.0 hex header and start address
+        # Writes the v3.0 hex header and start address
         f.write("v3.0 hex\n")
         f.write(f"{start_address:X}\n")
 
-        # 2. Write the 65,536 pixel words
+        # Writes the pixel data as 32-bit words in hex format
         line_count = 0
         for r, g, b in pixels:
             # Combine R, G, B into a single 32-bit word (0x00RRGGBB)
@@ -52,8 +53,7 @@ def image_to_v3_hex(image_path, output_path, target_size, start_address):
                 f.write("\n")
         
     print(f"\nSuccessfully generated Logisim-compatible hex data in '{output_path}'.")
-    print(f"*** Load this file directly into your Data RAM starting at address {start_address:X}. ***")
+    print(f"*** Load the file directly into your Data RAM starting at address {start_address:X}. ***")
 
 if __name__ == "__main__":
-    # Note: Ensure you have the Pillow library installed: pip install Pillow
     image_to_v3_hex(IMAGE_FILENAME, OUTPUT_FILENAME, IMAGE_SIZE, START_ADDRESS)
