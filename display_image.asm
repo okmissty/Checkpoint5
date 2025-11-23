@@ -1,4 +1,4 @@
-# display_image.asm - Display image (26-bit addresses)
+# display_image.asm - Display image (using negative offsets)
 # Tyeon Ford - CMSC 301 Final Project
 
 .data 0x00001000
@@ -33,7 +33,7 @@ draw_stored_image:
     sw   $s3, 16($sp)
     sw   $s4, 20($sp)
     
-    # Load image width and height
+    # Load image width and height from 0x2000
     lui  $t0, 0x0000
     ori  $t0, $t0, 0x2000
     lw   $s4, 0($t0)           # width
@@ -42,20 +42,6 @@ draw_stored_image:
     # Image data starts at 0x2008
     lui  $s3, 0x0000
     ori  $s3, $s3, 0x2008
-    
-    # Build RGB base address 0x3FFFF20 for 26-bit system
-    # 0x3FFFF20 = 0011 1111 1111 1111 1111 0010 0000
-    # Upper 10 bits: 0011 1111 11 = 0x0FF (shifted left 16) = 0x0FF0000
-    # But lui shifts by 16, so: lui 0x03FF gives 0x03FF0000 (32-bit)
-    # For 26-bit, we need: 0x3FFFF20
-    # Let's build it: 0x3FFF = upper, 0xF20 = lower... no wait
-    # 0x3FFFF20 in hex = 67108640 decimal
-    # Split: 0x3FF = 1023, 0xFF20 = 65312
-    # lui 0x03FF = 0x03FF0000, then ori 0xFF20 = 0x03FFFF20
-    # The CPU will use lower 26 bits: 0x3FFFF20 ✓
-    
-    lui  $s6, 0x03FF
-    ori  $s6, $s6, 0xFF20      # $s6 = RGB base (X register)
     
     add  $s0, $zero, $zero     # y = 0
     
@@ -67,22 +53,15 @@ draw_y_loop:
 draw_x_loop:
     beq  $s1, $s4, draw_y_next
     
-    # Load color
+    # Load color from image data
     lw   $s2, 0($s3)
     addi $s3, $s3, 4
     
-    # Write X (base + 0)
-    sw   $s1, 0($s6)
-    
-    # Write Y (base + 4)
-    sw   $s0, 4($s6)
-    
-    # Write Color (base + 8)
-    sw   $s2, 8($s6)
-    
-    # Write Enable (base + 12)
-    addi $t1, $zero, 1
-    sw   $t1, 12($s6)
+    # Write to RGB controller using negative offsets from $zero
+    sw   $s1, -224($zero)      # X coordinate (0xFFFFFF20 -> 0x3FFFF20)
+    sw   $s0, -220($zero)      # Y coordinate (0xFFFFFF24 -> 0x3FFFF24)
+    sw   $s2, -216($zero)      # Color        (0xFFFFFF28 -> 0x3FFFF28)
+    sw   $zero, -212($zero)    # Write pixel  (0xFFFFFF2C -> 0x3FFFF2C)
     
     addi $s1, $s1, 1
     j    draw_x_loop
