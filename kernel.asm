@@ -156,50 +156,47 @@ Syscall1_Restore:
     # Return
     jr   $k0
 
-# ============================================================================
+# =====================================================================
 # SYSCALL 4: PRINT STRING
-# ============================================================================
-# Input:  $a0 = address of NUL-terminated .asciiz string
-# Output: prints characters until 0 word
-# String layout: each char is a 4-byte word, then a 4-byte 0 word
-# Terminal DATA: 0x3FFFF00
+# Input:  $a0 = pointer to .asciiz string in static/heap memory
+# Output: prints until 0-word terminator
+#   Each character word: low 8 bits = ASCII
+#   Terminator: full 32-bit 0
+# =====================================================================
 Syscall4:
-    # Save registers we use
-    addi $sp, $sp, -20
+    # save caller-saved regs we use
+    addi $sp, $sp, -12
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
-    sw   $t2, 8($sp)
-    sw   $t3, 12($sp)
-    sw   $a0, 16($sp)
+    sw   $a0, 8($sp)
 
-    # t0 = current pointer into string
-    add  $t0, $a0, $zero
-
-    # t1 = TERMINAL address 0x03FFFF00
-    lui  $t1, 0x03FF
-    ori  $t1, $t1, 0xFF00
+    add  $t0, $a0, $zero      # t0 = current address
 
 Syscall4_Loop:
-    lw   $t2, 0($t0)          # t2 = next character word
-    beq  $t2, $zero, Syscall4_Done
+    lw   $t1, 0($t0)          # load next word
+    beq  $t1, $zero, Syscall4_Done   # 0-word terminator
 
-    # write char to terminal (lower 8 bits used by controller)
-    sw   $t2, 0($t1)
+    # send low byte to TERMINAL at -256($zero) = 0x3FFFF00
+    sw   $t1, -256($zero)
 
-    addi $t0, $t0, 4          # advance pointer (next char word)
+    addi $t0, $t0, 4          # move to next word
     j    Syscall4_Loop
 
 Syscall4_Done:
-    # Restore registers
-    lw   $a0, 16($sp)
-    lw   $t3, 12($sp)
-    lw   $t2, 8($sp)
+    # restore and return
+    lw   $a0, 8($sp)
     lw   $t1, 4($sp)
     lw   $t0, 0($sp)
-    addi $sp, $sp, 20
-
+    addi $sp, $sp, 12
     jr   $k0
 
+# ============================================================================
+# SYSCALL 5: READ INTEGER
+# ============================================================================
+# Input:  Reads from keyboard until newline
+# Output: $v0 = integer read (signed)
+# Keyboard STATUS: -240($zero) = 0x3FFFF10
+# Keyboard DATA:   -236($zero) = 0x3FFFF14
 Syscall5:
     # Save regs...
     addi $sp, $sp, -28
@@ -274,14 +271,20 @@ Sys5_Pos:
     
 # =====================================================================
 # SYSCALL 8: READ STRING
-#   - Reads chars until newline (10 or 13)
+# Behavior:
+#   - Waits for characters from keyboard
+#   - Stops on newline (LF=10 or CR=13)
 #   - Stores each char as a 4-byte word in heap
 #   - Writes 4-byte 0 terminator
 #   - Updates __HEAP_POINTER__
-#   - Returns v0 = pointer to first char in heap
+#   - Returns v0 = pointer to first char of the new string
+# Keyboard:
+#   STATUS at -240($zero)
+#   DATA   at -236($zero)
+#   POP    by sw anything to -240($zero)
 # =====================================================================
 Syscall8:
-    # Save regs
+    # save regs
     addi $sp, $sp, -28
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
@@ -293,18 +296,18 @@ Syscall8:
 
     # t3 = &__HEAP_POINTER__
     la   $t3, __HEAP_POINTER__
-    # t4 = current heap ptr
+    # t4 = current heap pointer (where we will store first char)
     lw   $t4, 0($t3)
-    # v0 = start of string
+    # v0 = start of this string
     add  $v0, $t4, $zero
 
 Sys8_ReadLoop:
 Sys8_WaitChar:
-    lw   $t1, -240($zero)       # STATUS
+    lw   $t1, -240($zero)        # STATUS
     beq  $t1, $zero, Sys8_WaitChar
 
-    lw   $t2, -236($zero)       # DATA
-    sw   $zero, -240($zero)     # POP
+    lw   $t2, -236($zero)        # DATA (character)
+    sw   $zero, -240($zero)      # POP / acknowledge
 
     # End on LF (10) or CR (13)
     addi $t0, $zero, 10
@@ -312,19 +315,20 @@ Sys8_WaitChar:
     addi $t0, $zero, 13
     beq  $t2, $t0, Sys8_Done
 
-    # Store char as word at [t4]
+    # Store character as a 4-byte word at [t4]
     sw   $t2, 0($t4)
-    addi $t4, $t4, 4
+    addi $t4, $t4, 4             # advance heap pointer by 4 bytes
     j    Sys8_ReadLoop
 
 Sys8_Done:
-    # 0 terminator
+    # Null terminator word
     sw   $zero, 0($t4)
     addi $t4, $t4, 4
-    # update heap pointer
+
+    # Save updated heap pointer
     sw   $t4, 0($t3)
 
-    # Restore regs
+    # restore regs
     lw   $a0, 24($sp)
     lw   $t5, 20($sp)
     lw   $t4, 16($sp)
