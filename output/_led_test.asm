@@ -6,7 +6,7 @@ LED_Loop:
     add  $a0, $s0, $zero
     jal  LED_Set
 
-    addi $t0, $zero, 50000
+    addi $t0, $zero, 5
 Delay:
     addi $t0, $t0, -1
     bne  $t0, $zero, Delay
