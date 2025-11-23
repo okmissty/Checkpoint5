@@ -8,7 +8,7 @@
 .text
 
 main:
-    # Print prompt: "Enter a line: "
+    # Print prompt: "Enter a line: \n"
     la   $a0, msg_prompt
     addi $v0, $zero, 4      # syscall 4: print string
     syscall
@@ -42,5 +42,5 @@ main:
 ##############################################
 .data
 
-msg_prompt: .asciiz "Enter a line: "
+msg_prompt: .asciiz "Enter a line:\n"   # NOTE: newline here
 msg_prefix: .asciiz "You typed: "
