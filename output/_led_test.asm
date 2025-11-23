@@ -19,7 +19,7 @@ LED_Loop:
     jal  LED_Set
 
     # Simple delay loop so blinking is visible
-    addi $t0, $zero, 50000       # adjust this for your clock speed
+    addi $t0, $zero, 50       # adjust this for your clock speed
 LED_Delay:
     addi $t0, $t0, -1
     bne  $t0, $zero, LED_Delay
