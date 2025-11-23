@@ -200,15 +200,8 @@ Syscall4_Done:
 
     jr   $k0
 
-# ============================================================================
-# SYSCALL 5: READ INTEGER
-# ============================================================================
-# Input:  Reads from keyboard until newline
-# Output: $v0 = integer read (signed)
-# Keyboard STATUS: -240($zero) = 0x3FFFF10
-# Keyboard DATA:   -236($zero) = 0x3FFFF14
 Syscall5:
-    # Save registers
+    # Save regs...
     addi $sp, $sp, -28
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
@@ -217,66 +210,58 @@ Syscall5:
     sw   $t4, 16($sp)
     sw   $t5, 20($sp)
     sw   $t6, 24($sp)
-    
-    add  $t0, $zero, $zero         # $t0 = result integer
-    add  $t1, $zero, $zero         # $t1 = is_negative flag
-    addi $t2, $zero, 10            # $t2 = base 10
-    
-Syscall5_ReadLoop:
-    # Wait for character
-Syscall5_Wait:
-    # Read keyboard status at 0x03FFFF10
-    lui  $t6, 0x03FF
-    ori  $t6, $t6, 0xFF10
-    lw   $t5, 0($t6)               # Read KEYBOARD STATUS
-    beq  $t5, $zero, Syscall5_Wait # Wait until ready
 
-    # Read character from 0x03FFFF14
-    lui  $t6, 0x03FF
-    ori  $t6, $t6, 0xFF14
-    lw   $t5, 0($t6)               # Read KEYBOARD DATA
-    
-    # Check for newline (ASCII 10 or 13)
+    add  $t0, $zero, $zero      # result
+    add  $t1, $zero, $zero      # is_negative
+    addi $t2, $zero, 10         # base 10
+
+Sys5_ReadLoop:
+Sys5_WaitChar:
+    lw   $t3, -240($zero)       # STATUS
+    beq  $t3, $zero, Sys5_WaitChar
+
+    lw   $t5, -236($zero)       # DATA
+    sw   $zero, -240($zero)     # POP
+
+    # Check for newline (10 or 13)
     addi $t6, $zero, 10
-    beq  $t5, $t6, Syscall5_Done
+    beq  $t5, $t6, Sys5_Done
     addi $t6, $zero, 13
-    beq  $t5, $t6, Syscall5_Done
-    
-    # Check for minus sign (ASCII 45)
-    addi $t6, $zero, 45
-    bne  $t5, $t6, Syscall5_NotMinus
-    addi $t1, $zero, 1             # Set negative flag
-    j    Syscall5_ReadLoop
+    beq  $t5, $t6, Sys5_Done
 
-Syscall5_NotMinus:
-    # Check if digit (ASCII 48-57)
-    addi $t6, $zero, 48            # '0'
+    # Check minus sign
+    addi $t6, $zero, 45         # '-'
+    bne  $t5, $t6, Sys5_NotMinus
+    addi $t1, $zero, 1          # is_negative = 1
+    j    Sys5_ReadLoop
+
+Sys5_NotMinus:
+    # Check digit '0'..'9'
+    addi $t6, $zero, 48         # '0'
     slt  $t6, $t5, $t6
-    bne  $t6, $zero, Syscall5_ReadLoop  # Not a digit, below '0'
-    
-    addi $t6, $zero, 58            # '9' + 1
+    bne  $t6, $zero, Sys5_ReadLoop
+
+    addi $t6, $zero, 58         # '9'+1
     slt  $t6, $t5, $t6
-    beq  $t6, $zero, Syscall5_ReadLoop  # Not a digit, above '9'
-    
-    # Convert ASCII to digit
-    addi $t5, $t5, -48             # digit = char - '0'
-    
+    beq  $t6, $zero, Sys5_ReadLoop
+
+    # Convert ASCII → digit
+    addi $t5, $t5, -48
+
     # result = result * 10 + digit
     mult $t0, $t2
     mflo $t0
     add  $t0, $t0, $t5
-    
-    j    Syscall5_ReadLoop
+    j    Sys5_ReadLoop
 
-Syscall5_Done:
-    # Apply negative sign if needed
-    beq  $t1, $zero, Syscall5_Positive
+Sys5_Done:
+    beq  $t1, $zero, Sys5_Pos
     sub  $t0, $zero, $t0
 
-Syscall5_Positive:
-    add  $v0, $t0, $zero           # Return result in $v0
-    
-    # Restore registers
+Sys5_Pos:
+    add  $v0, $t0, $zero
+
+    # Restore regs...
     lw   $t6, 24($sp)
     lw   $t5, 20($sp)
     lw   $t4, 16($sp)
@@ -285,23 +270,18 @@ Syscall5_Positive:
     lw   $t1, 4($sp)
     lw   $t0, 0($sp)
     addi $sp, $sp, 28
-    
     jr   $k0
     
-# ============================================================================
+# =====================================================================
 # SYSCALL 8: READ STRING
-# ============================================================================
-# Behavior:
-#   - Reads characters from keyboard until newline (ASCII 10)
-#   - For each char, stores it as a 4-byte word in heap
-#   - Writes a 4-byte 0 terminator
-#   - Updates heap pointer (__HEAP_POINTER__)
-#   - Returns $v0 = pointer to start of the string in heap
-#
-# Keyboard STATUS: 0x3FFFF10
-# Keyboard DATA:   0x3FFFF14
+#   - Reads chars until newline (10 or 13)
+#   - Stores each char as a 4-byte word in heap
+#   - Writes 4-byte 0 terminator
+#   - Updates __HEAP_POINTER__
+#   - Returns v0 = pointer to first char in heap
+# =====================================================================
 Syscall8:
-    # Save registers we will use (keep $v0 as return)
+    # Save regs
     addi $sp, $sp, -28
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
@@ -313,47 +293,38 @@ Syscall8:
 
     # t3 = &__HEAP_POINTER__
     la   $t3, __HEAP_POINTER__
-    # t4 = current heap pointer (start of new string)
+    # t4 = current heap ptr
     lw   $t4, 0($t3)
-    # v0 = pointer to start of string (return value)
+    # v0 = start of string
     add  $v0, $t4, $zero
 
-Syscall8_ReadLoop:
+Sys8_ReadLoop:
+Sys8_WaitChar:
+    lw   $t1, -240($zero)       # STATUS
+    beq  $t1, $zero, Sys8_WaitChar
 
-Syscall8_WaitChar:
-    # Wait until a character is ready
-    # Load KEYBOARD STATUS address (0x03FFFF10) into t0
-    lui  $t0, 0x03FF
-    ori  $t0, $t0, 0xFF10
-    lw   $t1, 0($t0)          # t1 = STATUS
-    beq  $t1, $zero, Syscall8_WaitChar
+    lw   $t2, -236($zero)       # DATA
+    sw   $zero, -240($zero)     # POP
 
-    # Read the character from DATA (0x03FFFF14)
-    lui  $t0, 0x03FF
-    ori  $t0, $t0, 0xFF14
-    lw   $t2, 0($t0)          # t2 = char
+    # End on LF (10) or CR (13)
+    addi $t0, $zero, 10
+    beq  $t2, $t0, Sys8_Done
+    addi $t0, $zero, 13
+    beq  $t2, $t0, Sys8_Done
 
-    # Treat both LF (10) and CR (13) as end-of-line
-    addi $t1, $zero, 10       # '\n'
-    beq  $t2, $t1, Syscall8_Done
-
-    addi $t1, $zero, 13       # '\r'
-    beq  $t2, $t1, Syscall8_Done
-
-    # Store char as a 4-byte word at [t4]
+    # Store char as word at [t4]
     sw   $t2, 0($t4)
-    addi $t4, $t4, 4          # advance heap pointer
-    j    Syscall8_ReadLoop
+    addi $t4, $t4, 4
+    j    Sys8_ReadLoop
 
-Syscall8_Done:
-    # Write 4-byte 0 terminator
+Sys8_Done:
+    # 0 terminator
     sw   $zero, 0($t4)
     addi $t4, $t4, 4
-
-    # Update global heap pointer
+    # update heap pointer
     sw   $t4, 0($t3)
 
-    # Restore registers
+    # Restore regs
     lw   $a0, 24($sp)
     lw   $t5, 20($sp)
     lw   $t4, 16($sp)
@@ -362,7 +333,6 @@ Syscall8_Done:
     lw   $t1, 4($sp)
     lw   $t0, 0($sp)
     addi $sp, $sp, 28
-
     jr   $k0
 
 # ============================================================================
@@ -426,34 +396,29 @@ Syscall11:
 
     jr   $k0
 
-# ============================================================================
+# =====================================================================
 # SYSCALL 12: READ CHARACTER
-# ============================================================================
-# Output: $v0 = character read (ASCII)
-# Keyboard STATUS: -240($zero), DATA: -236($zero)
+# Output: v0 = character (ASCII)
+# Protocol: 
+#   - poll STATUS at -240($zero) until nonzero
+#   - read DATA from -236($zero)
+#   - write anything to -240($zero) to pop
+# =====================================================================
 Syscall12:
-    # Save registers
     addi $sp, $sp, -8
     sw   $t0, 0($sp)
     sw   $t1, 4($sp)
-    
-Syscall12_Wait:
-    # Read keyboard status from 0x03FFFF10
-    lui  $t2, 0x03FF
-    ori  $t2, $t2, 0xFF10
-    lw   $t1, 0($t2)               # KEYBOARD STATUS
-    beq  $t1, $zero, Syscall12_Wait
 
-    # Read keyboard data from 0x03FFFF14
-    lui  $t2, 0x03FF
-    ori  $t2, $t2, 0xFF14
-    lw   $v0, 0($t2)               # KEYBOARD DATA
-    
-    # Restore registers
+Syscall12_Wait:
+    lw   $t0, -240($zero)      # STATUS
+    beq  $t0, $zero, Syscall12_Wait
+
+    lw   $v0, -236($zero)      # DATA → v0
+    sw   $zero, -240($zero)    # POP
+
     lw   $t1, 4($sp)
     lw   $t0, 0($sp)
     addi $sp, $sp, 8
-    
     jr   $k0
 
 # ============================================================================
