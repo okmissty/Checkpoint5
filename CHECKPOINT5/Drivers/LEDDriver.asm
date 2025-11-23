@@ -1,7 +1,5 @@
-########################################
 # LED Controller Driver
 # Address: 0x3FFFF10 → offset -240($zero)
-########################################
 
 # Set LED on/off based on $a0 (0 = off, nonzero = on)
 LED_Set:

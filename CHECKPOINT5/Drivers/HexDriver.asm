@@ -1,13 +1,10 @@
-########################################
 # Hex Display Driver
 # Address: 0x3FFFF30 → offset -208($zero)
 #
 # Write:
 #   sw value, -208($zero)   ; lower 4 bits drive the hex digit
-#
 # Read:
 #   lw v0, -208($zero)      ; v0 has previous hex_reg value
-########################################
 
 # Set hex display to $a0 & 0xF (0..15)
 Hex_Set:

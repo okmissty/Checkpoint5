@@ -22,14 +22,25 @@ __SYSCALL_Dispatcher__:
     beq  $v0, $zero, Syscall0       # Boot/initialization
     addi $k1, $zero, 1
     beq  $v0, $k1, Syscall1         # Print integer
+   
+    addi $k1, $zero, 4
+    beq  $v0, $k1, Syscall4         # 4 = print string
+
     addi $k1, $zero, 5
     beq  $v0, $k1, Syscall5         # Read integer
+
+    addi $k1, $zero, 8
+    beq  $v0, $k1, Syscall8         # 8 = read string
+
     addi $k1, $zero, 9
     beq  $v0, $k1, Syscall9         # Heap allocation
+
     addi $k1, $zero, 10
     beq  $v0, $k1, Syscall10        # Exit program
+
     addi $k1, $zero, 11
     beq  $v0, $k1, Syscall11        # Print character
+
     addi $k1, $zero, 12
     beq  $v0, $k1, Syscall12        # Read character
     
@@ -146,6 +157,50 @@ Syscall1_Restore:
     jr   $k0
 
 # ============================================================================
+# SYSCALL 4: PRINT STRING
+# ============================================================================
+# Input:  $a0 = address of NUL-terminated .asciiz string
+# Output: prints characters until 0 word
+# String layout: each char is a 4-byte word, then a 4-byte 0 word
+# Terminal DATA: 0x3FFFF00
+Syscall4:
+    # Save registers we use
+    addi $sp, $sp, -20
+    sw   $t0, 0($sp)
+    sw   $t1, 4($sp)
+    sw   $t2, 8($sp)
+    sw   $t3, 12($sp)
+    sw   $a0, 16($sp)
+
+    # t0 = current pointer into string
+    add  $t0, $a0, $zero
+
+    # t1 = TERMINAL address 0x03FFFF00
+    lui  $t1, 0x03FF
+    ori  $t1, $t1, 0xFF00
+
+Syscall4_Loop:
+    lw   $t2, 0($t0)          # t2 = next character word
+    beq  $t2, $zero, Syscall4_Done
+
+    # write char to terminal (lower 8 bits used by controller)
+    sw   $t2, 0($t1)
+
+    addi $t0, $t0, 4          # advance pointer (next char word)
+    j    Syscall4_Loop
+
+Syscall4_Done:
+    # Restore registers
+    lw   $a0, 16($sp)
+    lw   $t3, 12($sp)
+    lw   $t2, 8($sp)
+    lw   $t1, 4($sp)
+    lw   $t0, 0($sp)
+    addi $sp, $sp, 20
+
+    jr   $k0
+
+# ============================================================================
 # SYSCALL 5: READ INTEGER
 # ============================================================================
 # Input:  Reads from keyboard until newline
@@ -229,6 +284,85 @@ Syscall5_Positive:
     lw   $t0, 0($sp)
     addi $sp, $sp, 28
     
+    jr   $k0
+    
+# ============================================================================
+# SYSCALL 8: READ STRING
+# ============================================================================
+# Behavior:
+#   - Reads characters from keyboard until newline (ASCII 10)
+#   - For each char, stores it as a 4-byte word in heap
+#   - Writes a 4-byte 0 terminator
+#   - Updates heap pointer (__HEAP_POINTER__)
+#   - Returns $v0 = pointer to start of the string in heap
+#
+# Keyboard STATUS: 0x3FFFF10
+# Keyboard DATA:   0x3FFFF14
+Syscall8:
+    # Save registers we will use (v0 is our return value, so don't save that)
+    addi $sp, $sp, -28
+    sw   $t0, 0($sp)
+    sw   $t1, 4($sp)
+    sw   $t2, 8($sp)
+    sw   $t3, 12($sp)
+    sw   $t4, 16($sp)
+    sw   $t5, 20($sp)
+    sw   $a0, 24($sp)
+
+    # t0 = 0x03FFxxxx base
+    lui  $t0, 0x03FF
+
+    # t1 = KEYBOARD STATUS (0x3FFFF10)
+    ori  $t1, $t0, 0xFF10
+
+    # t2 = KEYBOARD DATA (0x3FFFF14)
+    ori  $t2, $t0, 0xFF14
+
+    # t3 = &__HEAP_POINTER__
+    la   $t3, __HEAP_POINTER__
+
+    # t4 = current heap pointer (start of new string)
+    lw   $t4, 0($t3)
+
+    # v0 = pointer to start of string (return value)
+    add  $v0, $t4, $zero
+
+Syscall8_ReadLoop:
+Syscall8_WaitChar:
+    # Wait until a character is ready
+    lw   $t5, 0($t1)            # read STATUS
+    beq  $t5, $zero, Syscall8_WaitChar
+
+    # Read the character
+    lw   $t5, 0($t2)            # t5 = char
+
+    # If newline (ASCII 10), we're done
+    addi $t0, $zero, 10
+    beq  $t5, $t0, Syscall8_Done
+
+    # Store char as a 4-byte word at [t4]
+    sw   $t5, 0($t4)
+    addi $t4, $t4, 4            # advance heap ptr
+    j    Syscall8_ReadLoop
+
+Syscall8_Done:
+    # Write 4-byte 0 terminator
+    sw   $zero, 0($t4)
+    addi $t4, $t4, 4
+
+    # Update global heap pointer
+    sw   $t4, 0($t3)
+
+    # Restore registers
+    lw   $a0, 24($sp)
+    lw   $t5, 20($sp)
+    lw   $t4, 16($sp)
+    lw   $t3, 12($sp)
+    lw   $t2, 8($sp)
+    lw   $t1, 4($sp)
+    lw   $t0, 0($sp)
+    addi $sp, $sp, 28
+
     jr   $k0
 
 # ============================================================================

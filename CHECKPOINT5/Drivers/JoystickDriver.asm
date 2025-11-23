@@ -1,17 +1,14 @@
-########################################
 # Joystick Driver
-# Hardware:
+# Addresses:
 #   0x3FFFF50 → X address (read X input)
 #   0x3FFFF54 → Y address (read Y input)
 #
 # On read:
 #   DataToBus = zero_extend(X[3:0]) or Y[3:0]
-#   So the low 4 bits are the joystick position, 0..15.
-#
-# Our CPU reaches these with:
+#   Low 4 bits are the joystick position, 0..15.
+# Read X or Y:
 #   X: lw ..., -176($zero)   # 0xFFFFFF50 → 0x3FFFF50 on bus
 #   Y: lw ..., -172($zero)   # 0xFFFFFF54 → 0x3FFFF54 on bus
-########################################
 
 # Return X (0..15) in $v0
 Joystick_ReadX:

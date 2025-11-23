@@ -1,9 +1,3 @@
-##############################################
-# hex_test.asm
-# Assemble with:
-#   ./assemble kernel.asm CHECKPOINT5/hex_test.asm hex_static.bin hex_inst.bin
-##############################################
-
 .text
 
 ###################################################
@@ -30,7 +24,7 @@ Hex_Delay:
     j    Hex_Loop
 
 ###################################################
-# === HEX DRIVER ROUTINES (as above) ===
+# === HEX DRIVER ROUTINES ===
 ###################################################
 Hex_Set:
     andi $a0, $a0, 0x000F
