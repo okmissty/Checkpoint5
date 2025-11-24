@@ -22,12 +22,25 @@ __SYSCALL_Dispatcher__:
     beq  $v0, $zero, Syscall0       # Boot/initialization
     addi $k1, $zero, 1
     beq  $v0, $k1, Syscall1         # Print integer
-   
+
+    # Device syscalls grouped in block 16..22
+    addi $k1, $zero, 16
+    beq  $v0, $k1, Syscall16        # Hex: set display
+
+    addi $k1, $zero, 17
+    beq  $v0, $k1, Syscall17        # Hex: get display
+
     addi $k1, $zero, 4
     beq  $v0, $k1, Syscall4         # 4 = print string
 
     addi $k1, $zero, 5
     beq  $v0, $k1, Syscall5         # Read integer
+
+    addi $k1, $zero, 18
+    beq  $v0, $k1, Syscall18        # Joystick: read X
+
+    addi $k1, $zero, 19
+    beq  $v0, $k1, Syscall19        # Joystick: read Y
 
     addi $k1, $zero, 8
     beq  $v0, $k1, Syscall8         # 8 = read string
@@ -43,6 +56,15 @@ __SYSCALL_Dispatcher__:
 
     addi $k1, $zero, 12
     beq  $v0, $k1, Syscall12        # Read character
+
+    addi $k1, $zero, 20
+    beq  $v0, $k1, Syscall20        # Joystick: read both X and Y
+
+    addi $k1, $zero, 21
+    beq  $v0, $k1, Syscall21        # LED: set
+
+    addi $k1, $zero, 22
+    beq  $v0, $k1, Syscall22        # LED: get
     
     # If invalid syscall code, just return
     jr   $k0
@@ -152,6 +174,71 @@ Syscall1_Restore:
     addi $sp, $sp, 24
     
     # Return
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 16: HEX SET
+# Input: $a0 = value (only low 4 bits used)
+# ============================================================================
+Syscall16:
+    andi $a0, $a0, 0x000F
+    sw   $a0, -208($zero)
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 17: HEX GET
+# Output: $v0 = hex value (0..15)
+# ============================================================================
+Syscall17:
+    lw   $v0, -208($zero)
+    andi $v0, $v0, 0x000F
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 18: JOYSTICK READ X
+# Output: $v0 = X (0..15)
+# ============================================================================
+Syscall18:
+    lw   $v0, -176($zero)
+    andi $v0, $v0, 0x000F
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 19: JOYSTICK READ Y
+# Output: $v0 = Y (0..15)
+# ============================================================================
+Syscall19:
+    lw   $v0, -172($zero)
+    andi $v0, $v0, 0x000F
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 20: JOYSTICK READ BOTH
+# Output: $v0 = X, $v1 = Y
+# ============================================================================
+Syscall20:
+    lw   $v0, -176($zero)
+    lw   $v1, -172($zero)
+    andi $v0, $v0, 0x000F
+    andi $v1, $v1, 0x000F
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 21: LED SET
+# Input: $a0 = 0 (off) or nonzero (on)
+# ============================================================================
+Syscall21:
+    andi $a0, $a0, 0x0001
+    sw   $a0, -240($zero)
+    jr   $k0
+
+# ============================================================================
+# SYSCALL 22: LED GET
+# Output: $v0 = 0 or 1
+# ============================================================================
+Syscall22:
+    lw   $v0, -240($zero)
+    andi $v0, $v0, 0x0001
     jr   $k0
 
 # =====================================================================
