@@ -7,9 +7,10 @@ main:
     addi $s0, $zero, 0           # s0 = current value (0..15)
 
 Hex_Loop:
-    # Call Hex_Set(s0)
+    # Call Hex_Set(s0) via syscall (Syscall16)
     add  $a0, $s0, $zero
-    jal  Hex_Set
+    addi $v0, $zero, 16
+    syscall
 
     # Delay so you can see each value
     addi $t0, $zero, 15       # tweak if too fast/slow
@@ -23,15 +24,4 @@ Hex_Delay:
 
     j    Hex_Loop
 
-###################################################
-# === HEX DRIVER ROUTINES ===
-###################################################
-Hex_Set:
-    andi $a0, $a0, 0x000F
-    sw   $a0, -208($zero)        # 0x3FFFF30
-    jr   $ra
-
-Hex_Get:
-    lw   $v0, -208($zero)
-    andi $v0, $v0, 0x000F
-    jr   $ra
+    # Device access is performed via kernel syscalls (16/17)

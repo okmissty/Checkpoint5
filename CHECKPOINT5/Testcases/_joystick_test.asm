@@ -5,8 +5,9 @@
 ###################################################
 main:
 Loop:
-    # Read joystick
-    jal  Joystick_ReadXY         # X -> v0, Y -> v1
+    # Read joystick via syscall (Syscall20): returns X in $v0, Y in $v1
+    addi $v0, $zero, 20
+    syscall
 
     # Save X,Y before we overwrite v0 with syscall codes
     add  $t0, $v0, $zero         # t0 = X
@@ -51,22 +52,4 @@ Loop:
 # === JOYSTICK DRIVER ROUTINES ===
 ###################################################
 
-# Return X (0..15) in $v0
-Joystick_ReadX:
-    lw   $v0, -176($zero)        # 0x3FFFF50
-    andi $v0, $v0, 0x000F
-    jr   $ra
-
-# Return Y (0..15) in $v0
-Joystick_ReadY:
-    lw   $v0, -172($zero)        # 0x3FFFF54
-    andi $v0, $v0, 0x000F
-    jr   $ra
-
-# Return X and Y: v0 = X, v1 = Y
-Joystick_ReadXY:
-    lw   $v0, -176($zero)        # X
-    lw   $v1, -172($zero)        # Y
-    andi $v0, $v0, 0x000F
-    andi $v1, $v1, 0x000F
-    jr   $ra
+    # Joystick access is performed via kernel syscalls (18/19/20)
