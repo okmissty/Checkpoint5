@@ -4,46 +4,79 @@
 # === MAIN PROGRAM ===
 ###################################################
 main:
+    # Loop: exercise joystick syscalls individually and combined
 Loop:
-    # Read joystick via syscall (Syscall20): returns X in $v0, Y in $v1
+    # Read X via Syscall18
+    addi $v0, $zero, 18
+    syscall                     # v0 = X
+    add  $t0, $v0, $zero        # save X
+
+    # Print "X=" and value
+    addi $v0, $zero, 11
+    addi $a0, $zero, 88         # 'X'
+    syscall
+    addi $v0, $zero, 11
+    addi $a0, $zero, 61         # '='
+    syscall
+    add  $a0, $t0, $zero
+    addi $v0, $zero, 1
+    syscall
+
+    # Read Y via Syscall19
+    addi $v0, $zero, 19
+    syscall                     # v0 = Y
+    add  $t1, $v0, $zero        # save Y
+
+    # Print " Y=" and value
+    addi $v0, $zero, 11
+    addi $a0, $zero, 32         # ' '
+    syscall
+    addi $v0, $zero, 11
+    addi $a0, $zero, 89         # 'Y'
+    syscall
+    addi $v0, $zero, 11
+    addi $a0, $zero, 61         # '='
+    syscall
+    add  $a0, $t1, $zero
+    addi $v0, $zero, 1
+    syscall
+
+    # Now call combined Syscall20 (X->v0, Y->v1) and print both to verify
     addi $v0, $zero, 20
     syscall
-
-    # Save X,Y before we overwrite v0 with syscall codes
-    add  $t0, $v0, $zero         # t0 = X
-    add  $t1, $v1, $zero         # t1 = Y
-
-    # Print "X="
-    li   $v0, 11                 # print char
-    li   $a0, 88                 # 'X'
+    # print "Both: " then X and Y
+    addi $v0, $zero, 11
+    addi $a0, $zero, 66         # 'B'
     syscall
-    li   $v0, 11
-    li   $a0, 61                 # '='
+    addi $v0, $zero, 11
+    addi $a0, $zero, 111        # 'o'
     syscall
-
-    # Print X as integer (from t0, not v0)
-    li   $v0, 1                  # print int
-    add  $a0, $t0, $zero         # a0 = X
+    addi $v0, $zero, 11
+    addi $a0, $zero, 116        # 't'
     syscall
-
-    # Print " Y="
-    li   $v0, 11
-    li   $a0, 32                 # ' '
+    addi $v0, $zero, 11
+    addi $a0, $zero, 104        # 'h'
     syscall
-    li   $v0, 11
-    li   $a0, 89                 # 'Y'
+    addi $v0, $zero, 11
+    addi $a0, $zero, 58         # ':'
     syscall
-    li   $a0, 61                 # '='
+    addi $v0, $zero, 11
+    addi $a0, $zero, 32         # ' '
     syscall
-
-    # Print Y as integer (from t1)
-    li   $v0, 1
-    add  $a0, $t1, $zero         # a0 = Y
+    # v0 already has X, v1 has Y — print both
+    add  $a0, $v0, $zero
+    addi $v0, $zero, 1
+    syscall
+    addi $v0, $zero, 11
+    addi $a0, $zero, 32
+    syscall
+    add  $a0, $v1, $zero
+    addi $v0, $zero, 1
     syscall
 
     # Newline
-    li   $v0, 11
-    li   $a0, 10
+    addi $v0, $zero, 11
+    addi $a0, $zero, 10
     syscall
 
     j Loop
