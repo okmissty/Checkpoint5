@@ -77,14 +77,14 @@ ParseFirst:
     beq  $t3, $zero, ParseError  # if greater or equal to ':', Error
 
     # parse digits
-    addi $t5, $zero, 0          # tens place value
+    addi $t5, $zero, 0          # place value
     addi $t6, $zero, 1          # sign = 1
 FirstDigitLoop:
-    addi $t4, $t1, -48          # digit value
-    addi $t7, $zero, 10         # 10
-    mult $t5, $t7               # multiply tens place value by 10
-    mflo $t5                    # store result back in tens place value
-    add  $t5, $t5, $t4          # add digit value to tens place value
+    addi $t4, $t1, -48          # convert ASCII to digit value
+    addi $t7, $zero, 10         # base 10
+    mult $t5, $t7               # multiply place value by 10
+    mflo $t5                    # store result back in place value
+    add  $t5, $t5, $t4          # add digit value to place value
     addi $t0, $t0, 4            # move to next character
     lw   $t1, 0($t0)            # load current character
     andi $t1, $t1, 0xFF         # mask to get ASCII char
@@ -102,17 +102,17 @@ FirstDigitsDone:
 
 FirstSignNeg:
     addi $t6, $zero, -1      # sign = -1
-    addi $t5, $zero, 0       # acc = 0
-    addi $t0, $t0, 4
-    lw   $t1, 0($t0)
+    addi $t5, $zero, 0       # place value = 0
+    addi $t0, $t0, 4         # move to next character
+    lw   $t1, 0($t0)         # load current character
     andi $t1, $t1, 0xFF
     j FirstDigitLoop
 
 FirstSignPos:
     addi $t6, $zero, 1       # sign = +1
     addi $t5, $zero, 0       # acc = 0
-    addi $t0, $t0, 4
-    lw   $t1, 0($t0)
+    addi $t0, $t0, 4         # move to next character
+    lw   $t1, 0($t0)         # load current character
     andi $t1, $t1, 0xFF
     j FirstDigitLoop
 
@@ -143,79 +143,79 @@ Skip1Inc:
     j Skip1
 
 ReadOp:
-    lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
-    add  $s1, $t1, $zero     # operator ASCII
-    addi $t0, $t0, 4
+    lw   $t1, 0($t0)            # load current character
+    andi $t1, $t1, 0xFF         # mask to get ASCII char
+    add  $s1, $t1, $zero        # operator ASCII
+    addi $t0, $t0, 4            # move to next character
 
     # skip spaces before second operand
 Skip2:
-    lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
-    beq  $t1, $zero, Calc_Loop
-    addi $t2, $zero, 32
+    lw   $t1, 0($t0)            # load current character
+    andi $t1, $t1, 0xFF         # mask to get ASCII char
+    beq  $t1, $zero, Calc_Loop  # if null terminator, end loop
+    addi $t2, $zero, 32         # space
     beq  $t1, $t2, Skip2Inc
-    addi $t2, $zero, 9
+    addi $t2, $zero, 9          # tab
     beq  $t1, $t2, Skip2Inc
     j ParseSecond
 Skip2Inc:
-    addi $t0, $t0, 4
+    addi $t0, $t0, 4            # move to next character
     j Skip2
 
 ParseSecond:
-    lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
-    addi $t2, $zero, 95
+    lw   $t1, 0($t0)            # load current character
+    andi $t1, $t1, 0xFF         # mask to get ASCII char
+    addi $t2, $zero, 95         # underscore '_'
     beq  $t1, $t2, SecondUnderscore
     # optional sign
-    addi $t2, $zero, 45
+    addi $t2, $zero, 45         # '-'
     beq  $t1, $t2, SecondSignNeg
-    addi $t2, $zero, 43
+    addi $t2, $zero, 43         # '+'
     beq  $t1, $t2, SecondSignPos
     # digit?
-    addi $t2, $zero, 48
-    slt  $t3, $t1, $t2
+    addi $t2, $zero, 48         # '0'
+    slt  $t3, $t1, $t2          # if less than '0', Error 
     bne  $t3, $zero, ParseError
-    addi $t2, $zero, 58
-    slt  $t3, $t1, $t2
+    addi $t2, $zero, 58         # ':'
+    slt  $t3, $t1, $t2          # # if greater or equal to ':', Error
     beq  $t3, $zero, ParseError
 
-    addi $t5, $zero, 0
-    addi $t6, $zero, 1
+    addi $t5, $zero, 0           # place value
+    addi $t6, $zero, 1           # sign = 1
 SecondDigitLoop:
-    addi $t4, $t1, -48
-    addi $t7, $zero, 10
-    mult $t5, $t7
-    mflo $t5
-    add  $t5, $t5, $t4
-    addi $t0, $t0, 4
-    lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
-    addi $t2, $zero, 48
-    slt  $t3, $t1, $t2
+    addi $t4, $t1, -48           # convert ASCII to digit value
+    addi $t7, $zero, 10          # base 10
+    mult $t5, $t7                # multiply place value by 10
+    mflo $t5                     # store result back in place value
+    add  $t5, $t5, $t4           # add digit value to place value
+    addi $t0, $t0, 4             # move to next character
+    lw   $t1, 0($t0)             # load current character
+    andi $t1, $t1, 0xFF          # mask to get ASCII char
+    addi $t2, $zero, 48          # '0'
+    slt  $t3, $t1, $t2           # if less than '0', done
     bne  $t3, $zero, SecondDigitsDone
-    addi $t2, $zero, 58
-    slt  $t3, $t1, $t2
+    addi $t2, $zero, 58          # ':'
+    slt  $t3, $t1, $t2           # if less than ':', done
     beq  $t3, $zero, SecondDigitsDone
     j SecondDigitLoop
 SecondDigitsDone:
-    mult $t5, $t6
-    mflo $s2
+    mult $t5, $t6                # multiply place value by sign 
+    mflo $s2                     # $s2 = operand2
     j AfterSecond
 
 SecondSignNeg:
     addi $t6, $zero, -1      # sign = -1
-    addi $t5, $zero, 0       # acc = 0
-    addi $t0, $t0, 4
-    lw   $t1, 0($t0)
+    addi $t5, $zero, 0       # place value = 0
+    addi $t0, $t0, 4         # move to next character
+    lw   $t1, 0($t0)         # load current character
     andi $t1, $t1, 0xFF
     j SecondDigitLoop
 
 SecondSignPos:
     addi $t6, $zero, 1       # sign = +1
-    addi $t5, $zero, 0       # acc = 0
-    addi $t0, $t0, 4
-    lw   $t1, 0($t0)
+    addi $t5, $zero, 0       # place value = 0
+    addi $t0, $t0, 4         # move to next character
+    lw   $t1, 0($t0)         # load current character
     andi $t1, $t1, 0xFF
     j SecondDigitLoop
 
@@ -246,33 +246,31 @@ AfterSecond:
     j ParseError
 
 DoAdd:
-    add  $t0, $s0, $s2
-    add  $s3, $s0, $s2
-    addi $s4, $zero, 1
+    add  $t0, $s0, $s2      # $t0 = operand1 + operand2
+    add  $s3, $t0, $zero    # $s3 = result
+    addi $s4, $zero, 1      # flag = 1
     j PrintResult
 
 DoSub:
-    sub  $t0, $s0, $s2
-    add  $s3, $s0, $zero
-    sub  $s3, $s3, $s2
-    addi $s4, $zero, 1
+    sub  $t0, $s0, $s2      # $t0 = operand1 - operand2
+    add  $s3, $t0, $zero    # $s3 = result
+    addi $s4, $zero, 1      # flag = 1
     j PrintResult
 
 DoMul:
-    mult $s0, $s2
-    mflo $t0
-    mfhi $t1
-    add  $s3, $t0, $zero
-    addi $s4, $zero, 1
+    mult $s0, $s2           # multiply operand1 by operand2  
+    mflo $t0                # move lower 32 bits of result to $t0
+    add  $s3, $t0, $zero    # $s3 = result
+    addi $s4, $zero, 1      # flag = 1
     j PrintResult
 
 DoDiv:
     # check divide by zero
-    beq  $s2, $zero, DivByZero
-    div  $s0, $s2
-    mflo $t0
-    add  $s3, $t0, $zero
-    addi $s4, $zero, 1
+    beq  $s2, $zero, DivByZero      # if divisor is zero, jump to error
+    div  $s0, $s2           # divide operand1 by operand2
+    mflo $t0                # move quotient to $t0
+    add  $s3, $t0, $zero    # $s3 = quotient
+    addi $s4, $zero, 1      # flag = 1
     j PrintResult
 
 DivByZero:
