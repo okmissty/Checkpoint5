@@ -38,14 +38,14 @@ Calc_Loop:
     syscall
     add  $t0, $v0, $zero     # t0 = ptr to current char (word-addressed)
 
-    # Skip leading whitespace
+# Skip leading whitespace
 SkipLeading:
     lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
+    andi $t1, $t1, 0xFF          # mask to get ASCII char
     beq  $t1, $zero, Calc_Loop   # empty line -> prompt again
-    addi $t2, $zero, 32
+    addi $t2, $zero, 32          # if space, then Skip
     beq  $t1, $t2, SkipInc
-    addi $t2, $zero, 9          # tab
+    addi $t2, $zero, 9          # if tab, then Skip
     beq  $t1, $t2, SkipInc
     # if 'q' or 'Q' then quit
     addi $t2, $zero, 113        # 'q'
@@ -60,7 +60,7 @@ SkipInc:
 # Parse first operand (could be '_' or integer)
 ParseFirst:
     lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
+    andi $t1, $t1, 0xFF          # mask to get ASCII char
     addi $t2, $zero, 95        # '_'
     beq  $t1, $t2, FirstUnderscore
     # parse optional sign
@@ -343,27 +343,15 @@ ParseError:
     j Calc_Loop
 
 Calc_Quit:
-    # print goodbye and exit
+    # print bye and exit
     addi $v0, $zero, 11
-    addi $a0, $zero, 71
+    addi $a0, $zero, 98 # b
     syscall
     addi $v0, $zero, 11
-    addi $a0, $zero, 111
+    addi $a0, $zero, 121 # y
     syscall
     addi $v0, $zero, 11
-    addi $a0, $zero, 111
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 100
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 98
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 121
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 10
+    addi $a0, $zero, 10 # e
     syscall
     # exit loop via syscall10
     addi $v0, $zero, 10
