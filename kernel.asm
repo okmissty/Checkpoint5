@@ -1,8 +1,5 @@
 # Tyeon Ford & Andy Quach
-# kernel.asm - CMSC 301 Project Checkpoint 5
-# This file must be assembled FIRST before any user program
 # Usage: ./assemble kernel.asm myprogram.asm static.bin inst.bin
-
     .text 
 
 # When syscall instruction executes:
