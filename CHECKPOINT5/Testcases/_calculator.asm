@@ -8,14 +8,13 @@
 # - Type 'q' as first non-space char to quit
 
 main:
-    addi $sp, $zero, -4096
     addi $s3, $zero, 0      # s3 = previous result
     addi $s4, $zero, 0      # s4 = has_prev (0 = no)
 
 Calc_Loop:
     # Print prompt: "calc> " using syscall11 per char
     addi $v0, $zero, 11
-    addi $a0, $zero, 99      # 'c'
+    addi $a0, $zero, 67      # 'C'
     syscall
     addi $v0, $zero, 11
     addi $a0, $zero, 97      # 'a'
@@ -38,77 +37,80 @@ Calc_Loop:
     syscall
     add  $t0, $v0, $zero     # t0 = ptr to current char (word-addressed)
 
-    # Skip leading whitespace
+# Skip leading whitespace
 SkipLeading:
-    lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
+    lw   $t1, 0($t0)             # load current character
+    andi $t1, $t1, 0xFF          # mask to get ASCII char
     beq  $t1, $zero, Calc_Loop   # empty line -> prompt again
-    addi $t2, $zero, 32
+    addi $t2, $zero, 32          # if space, then Skip
     beq  $t1, $t2, SkipInc
-    addi $t2, $zero, 9          # tab
+    addi $t2, $zero, 9           # if tab, then Skip
     beq  $t1, $t2, SkipInc
     # if 'q' or 'Q' then quit
-    addi $t2, $zero, 113        # 'q'
+    addi $t2, $zero, 113         # 'q'
     beq  $t1, $t2, Calc_Quit
-    addi $t2, $zero, 81         # 'Q'
+    addi $t2, $zero, 81          # 'Q'
     beq  $t1, $t2, Calc_Quit
+    # Else 
     j ParseFirst
 SkipInc:
-    addi $t0, $t0, 4
+    addi $t0, $t0, 4             # move to next character
     j SkipLeading
 
 # Parse first operand (could be '_' or integer)
 ParseFirst:
     lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
-    addi $t2, $zero, 95        # '_'
+    andi $t1, $t1, 0xFF          # mask to get ASCII char
+    addi $t2, $zero, 95          # '_'
     beq  $t1, $t2, FirstUnderscore
     # parse optional sign
-    addi $t2, $zero, 45        # '-'
+    addi $t2, $zero, 45          # '-'
     beq  $t1, $t2, FirstSignNeg
-    addi $t2, $zero, 43        # '+'
+    addi $t2, $zero, 43          # '+'
     beq  $t1, $t2, FirstSignPos
     # otherwise expect digit
-    addi $t2, $zero, 48
+    addi $t2, $zero, 48          # '0'
     slt  $t3, $t1, $t2
-    bne  $t3, $zero, ParseError
-    addi $t2, $zero, 58
+    bne  $t3, $zero, ParseError  # if less than '0', Error
+    addi $t2, $zero, 58          # ':'
     slt  $t3, $t1, $t2
-    beq  $t3, $zero, ParseError
+    beq  $t3, $zero, ParseError  # if greater or equal to ':', Error
 
     # parse digits
-    addi $t5, $zero, 0      # acc
-    addi $t6, $zero, 1      # sign = 1
+    addi $t5, $zero, 0          # tens place value
+    addi $t6, $zero, 1          # sign = 1
 FirstDigitLoop:
-    addi $t4, $t1, -48      # digit value
-    addi $t7, $zero, 10
-    mult $t5, $t7
-    mflo $t5
-    add  $t5, $t5, $t4
-    addi $t0, $t0, 4
-    lw   $t1, 0($t0)
-    andi $t1, $t1, 0xFF
-    addi $t2, $zero, 48
-    slt  $t3, $t1, $t2
+    addi $t4, $t1, -48          # digit value
+    addi $t7, $zero, 10         # 10
+    mult $t5, $t7               # multiply tens place value by 10
+    mflo $t5                    # store result back in tens place value
+    add  $t5, $t5, $t4          # add digit value to tens place value
+    addi $t0, $t0, 4            # move to next character
+    lw   $t1, 0($t0)            # load current character
+    andi $t1, $t1, 0xFF         # mask to get ASCII char
+    addi $t2, $zero, 48         # '0'
+    slt  $t3, $t1, $t2          # if less than '0'
     bne  $t3, $zero, FirstDigitsDone
-    addi $t2, $zero, 58
-    slt  $t3, $t1, $t2
+    addi $t2, $zero, 58         # ':'
+    slt  $t3, $t1, $t2          # if less than ':'
     beq  $t3, $zero, FirstDigitsDone
     j FirstDigitLoop
 FirstDigitsDone:
-    mult $t5, $t6
-    mflo $s0                # s0 = operand1
+    mult $t5, $t6               # multiply by sign
+    mflo $s0                    # s0 = operand1
     j AfterFirst
 
 FirstSignNeg:
-    addi $t6, $zero, -1
+    addi $t6, $zero, -1      # sign = -1
+    addi $t5, $zero, 0       # acc = 0
     addi $t0, $t0, 4
     lw   $t1, 0($t0)
     andi $t1, $t1, 0xFF
     j FirstDigitLoop
 
 FirstSignPos:
-    addi $t6, $zero, 1
+    addi $t6, $zero, 1       # sign = +1
+    addi $t5, $zero, 0       # acc = 0
     addi $t0, $t0, 4
     lw   $t1, 0($t0)
     andi $t1, $t1, 0xFF
@@ -202,14 +204,16 @@ SecondDigitsDone:
     j AfterSecond
 
 SecondSignNeg:
-    addi $t6, $zero, -1
+    addi $t6, $zero, -1      # sign = -1
+    addi $t5, $zero, 0       # acc = 0
     addi $t0, $t0, 4
     lw   $t1, 0($t0)
     andi $t1, $t1, 0xFF
     j SecondDigitLoop
 
 SecondSignPos:
-    addi $t6, $zero, 1
+    addi $t6, $zero, 1       # sign = +1
+    addi $t5, $zero, 0       # acc = 0
     addi $t0, $t0, 4
     lw   $t1, 0($t0)
     andi $t1, $t1, 0xFF
@@ -343,27 +347,15 @@ ParseError:
     j Calc_Loop
 
 Calc_Quit:
-    # print goodbye and exit
+    # print bye and exit
     addi $v0, $zero, 11
-    addi $a0, $zero, 71
+    addi $a0, $zero, 98 # b
     syscall
     addi $v0, $zero, 11
-    addi $a0, $zero, 111
+    addi $a0, $zero, 121 # y
     syscall
     addi $v0, $zero, 11
-    addi $a0, $zero, 111
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 100
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 98
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 121
-    syscall
-    addi $v0, $zero, 11
-    addi $a0, $zero, 10
+    addi $a0, $zero, 10 # e
     syscall
     # exit loop via syscall10
     addi $v0, $zero, 10
