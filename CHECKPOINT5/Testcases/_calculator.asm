@@ -320,7 +320,7 @@ PrintResult:
     j Calc_Loop
 
 ParseError:
-    # print "Parse error\n" and reprompt
+    # print "Parse \n" and reprompt
     addi $v0, $zero, 11
     addi $a0, $zero, 80
     syscall
@@ -345,15 +345,18 @@ ParseError:
     j Calc_Loop
 
 Calc_Quit:
-    # print bye and exit
+    # print "bye\n" and exit
     addi $v0, $zero, 11
-    addi $a0, $zero, 98 # b
+    addi $a0, $zero, 98   # 'b'
     syscall
     addi $v0, $zero, 11
-    addi $a0, $zero, 121 # y
+    addi $a0, $zero, 121  # 'y'
     syscall
     addi $v0, $zero, 11
-    addi $a0, $zero, 10 # e
+    addi $a0, $zero, 101  # 'e'
+    syscall
+    addi $v0, $zero, 11
+    addi $a0, $zero, 10   # '\n'
     syscall
     # exit loop via syscall10
     addi $v0, $zero, 10
